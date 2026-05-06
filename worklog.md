@@ -193,3 +193,58 @@ Stage Summary:
 - Checkout flow redirects to Shopify's secure hosted checkout
 - Local order tracking preserved as backup
 - All product add-to-cart actions include variantId
+
+---
+Task ID: 3
+Agent: full-stack-developer
+Task: Update Shopify client to use Cart API instead of deprecated Checkout API
+
+Work Log:
+- Updated API version in /src/lib/shopify.ts from "2025-01" to "2024-10" for wider Cart API support
+- Replaced `ShopifyCheckout` interface with `ShopifyCart` and `ShopifyCartLineItem` interfaces matching Cart API response shape
+- Replaced `shopifyCreateCheckout()` with `shopifyCreateCart()` using `cartCreate` mutation
+  - Maps lineItems to CartLineInput format (variantId → merchandiseId)
+  - Returns backward-compatible `{ id, webUrl }` shape where webUrl = cart.checkoutUrl
+- Replaced `shopifyGetCheckout()` with `shopifyGetCart()` using `cart` query
+  - Queries cart by ID with lines, merchandise, and totalAmount
+  - Returns `{ id, webUrl, totalAmount, currency, lineItems }` with variantId from merchandise.id
+- Updated /src/app/api/checkout/route.ts:
+  - POST now calls shopifyCreateCart() instead of shopifyCreateCheckout()
+  - GET now calls shopifyGetCart() instead of shopifyGetCheckout()
+  - GET accepts both `cartId` (new) and `checkoutId` (legacy alias) query params for backward compatibility
+  - Response shape for POST remains `{ id: string, webUrl: string }` — no frontend changes needed
+- All lint checks pass
+
+Stage Summary:
+- Shopify client migrated from deprecated Checkout API to modern Cart API
+- API version updated to 2024-10 for stable Cart API support
+- Frontend requires no changes — POST response shape preserved as `{ id, webUrl }`
+- GET endpoint supports both cartId and checkoutId params for backward compatibility
+
+---
+Task ID: 4
+Agent: full-stack-developer
+Task: Add demo data fallback for when Shopify is not connected
+
+Work Log:
+- Created /src/lib/demo-data.ts with comprehensive demo data:
+  - 4 categories: Instrumentos, Insumos, Equipamiento, Cuidado de Pies (with Spanish descriptions)
+  - 16 products (4 per category) with realistic Mexican podiatry product names in Spanish
+  - Products include: Pinza Universal de Acero Inoxidable, Tijera Podal de Punta Curva, Cureta Doble, Lima Metálica, Guantes de Nitrilo (Caja 100), Fresas de Carburo Surtidas (Set 10), Apósitos Hidrocoloides, Algodón Rollo Clínico, Micromotor Podal 35K RPM, Lámpara de Curado LED, Unidad de Succión Podal, Silla Podal Ergonómica, Crema de Urea al 40%, Tratamiento para Onicomicosis, Gel Descalcificador Profesional, Aceite Esencial de Árbol de Té
+  - Prices in MXN ranging from $125 to $10,500 with realistic compare prices for discounts
+  - Each product has: id, name, slug, description, content (HTML), price, comparePrice, sku, stock, rating, reviewCount, usage, featured/professional flags, category object
+  - Helper functions: getDemoProducts() with filtering/sorting/pagination, getDemoProductBySlug(), searchDemoProducts()
+- Updated /src/app/api/products/route.ts: Shopify first → demo data fallback with same filtering/pagination
+- Updated /src/app/api/categories/route.ts: Shopify first → demo categories fallback
+- Updated /src/app/api/products/[slug]/route.ts: Shopify first → demo product by slug fallback
+- Updated /src/app/api/search/route.ts: Shopify first → demo search fallback
+- All API routes use try/catch around Shopify calls with console.warn logging for graceful fallback
+- Cache-Control headers preserved in both Shopify and demo data responses
+- All lint checks pass
+
+Stage Summary:
+- App no longer crashes when Shopify credentials are missing or invalid
+- Full product catalog, categories, product details, and search work with demo data
+- 16 realistic podiatry products in Spanish with MXN pricing
+- Demo data seamlessly handles filtering, sorting, and pagination
+- Graceful fallback with console warnings (no 500 errors)

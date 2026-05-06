@@ -6,7 +6,7 @@ import type { Product, Category } from "@/types";
 
 const SHOPIFY_DOMAIN = process.env.NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN || "";
 const SHOPIFY_TOKEN = process.env.NEXT_PUBLIC_SHOPIFY_STOREFRONT_TOKEN || "";
-const API_VERSION = "2024-01";
+const API_VERSION = "2024-10";
 const ENDPOINT = `https://${SHOPIFY_DOMAIN}/api/${API_VERSION}/graphql.json`;
 
 // ── Types for Shopify API responses ──────────────────────────
@@ -77,26 +77,23 @@ interface ShopifyCollection {
   };
 }
 
-interface ShopifyCheckout {
+interface ShopifyCartLineItem {
   id: string;
-  webUrl: string;
-  ready: boolean;
-  requiresShipping: boolean;
-  subtotalPriceV2: ShopifyPriceV2;
-  totalTaxV2: ShopifyPriceV2;
-  totalPriceV2: ShopifyPriceV2;
-  lineItems: {
+  quantity: number;
+  merchandise: {
+    id: string;
+    title: string;
+    priceV2: ShopifyPriceV2;
+  };
+}
+
+interface ShopifyCart {
+  id: string;
+  checkoutUrl: string;
+  totalAmount: ShopifyPriceV2;
+  lines: {
     edges: {
-      node: {
-        id: string;
-        title: string;
-        quantity: number;
-        variant: {
-          id: string;
-          title: string;
-          priceV2: ShopifyPriceV2;
-        } | null;
-      };
+      node: ShopifyCartLineItem;
     }[];
   };
 }
@@ -569,24 +566,39 @@ export async function shopifySearchProducts(
 }
 
 /**
- * Create a Shopify checkout session.
+ * Create a Shopify Cart with line items.
+ * Uses the modern Cart API instead of the deprecated Checkout API.
  */
-export async function shopifyCreateCheckout(
+export async function shopifyCreateCart(
   lineItems: { variantId: string; quantity: number }[]
 ): Promise<{
   id: string;
   webUrl: string;
 }> {
   const mutation = `
-    mutation CheckoutCreate($input: CheckoutCreateInput!) {
-      checkoutCreate(input: $input) {
-        checkout {
+    mutation CartCreate($input: CartInput!) {
+      cartCreate(input: $input) {
+        cart {
           id
-          webUrl
-          subtotalPriceV2 { amount currencyCode }
-          totalPriceV2 { amount currencyCode }
+          checkoutUrl
+          totalAmount { amount currencyCode }
+          lines(first: 50) {
+            edges {
+              node {
+                id
+                quantity
+                merchandise {
+                  ... on ProductVariant {
+                    id
+                    title
+                    priceV2 { amount currencyCode }
+                  }
+                }
+              }
+            }
+          }
         }
-        checkoutUserErrors {
+        userErrors {
           code
           field
           message
@@ -595,74 +607,71 @@ export async function shopifyCreateCheckout(
     }
   `;
 
+  // Map lineItems to the CartLineInput format
+  const cartLines = lineItems.map((item) => ({
+    merchandiseId: item.variantId,
+    quantity: item.quantity,
+  }));
+
   const data = await shopifyFetch<{
-    checkoutCreate: {
-      checkout: ShopifyCheckout | null;
-      checkoutUserErrors: { code: string; field: string[]; message: string }[];
+    cartCreate: {
+      cart: ShopifyCart | null;
+      userErrors: { code: string; field: string[]; message: string }[];
     };
   }>(mutation, {
-    input: { lineItems },
+    input: { lines: cartLines },
   });
 
-  if (data.checkoutCreate.checkoutUserErrors.length > 0) {
-    const messages = data.checkoutCreate.checkoutUserErrors
+  if (data.cartCreate.userErrors.length > 0) {
+    const messages = data.cartCreate.userErrors
       .map((e) => e.message)
       .join(", ");
-    throw new Error(`Checkout creation errors: ${messages}`);
+    throw new Error(`Cart creation errors: ${messages}`);
   }
 
-  const checkout = data.checkoutCreate.checkout;
-  if (!checkout) {
-    throw new Error("Failed to create checkout: no checkout returned");
+  const cart = data.cartCreate.cart;
+  if (!cart) {
+    throw new Error("Failed to create cart: no cart returned");
   }
 
   return {
-    id: checkout.id,
-    webUrl: checkout.webUrl,
+    id: cart.id,
+    webUrl: cart.checkoutUrl,
   };
 }
 
 /**
- * Get checkout status by ID.
+ * Get cart status by ID.
+ * Uses the modern Cart API instead of the deprecated Checkout API.
  */
-export async function shopifyGetCheckout(
-  checkoutId: string
+export async function shopifyGetCart(
+  cartId: string
 ): Promise<{
   id: string;
   webUrl: string;
-  ready: boolean;
-  requiresShipping: boolean;
-  subtotal: number;
-  totalTax: number;
-  totalPrice: number;
+  totalAmount: number;
   currency: string;
   lineItems: {
     id: string;
     title: string;
     quantity: number;
     price: number;
-    variantId: string | null;
-    variantTitle: string | null;
+    variantId: string;
   }[];
 }> {
   const query = `
-    query Checkout($id: ID!) {
-      node(id: $id) {
-        ... on Checkout {
-          id
-          webUrl
-          ready
-          requiresShipping
-          subtotalPriceV2 { amount currencyCode }
-          totalTaxV2 { amount currencyCode }
-          totalPriceV2 { amount currencyCode }
-          lineItems(first: 50) {
-            edges {
-              node {
-                id
-                title
-                quantity
-                variant {
+    query Cart($id: ID!) {
+      cart(id: $id) {
+        id
+        checkoutUrl
+        totalAmount { amount currencyCode }
+        lines(first: 50) {
+          edges {
+            node {
+              id
+              quantity
+              merchandise {
+                ... on ProductVariant {
                   id
                   title
                   priceV2 { amount currencyCode }
@@ -676,29 +685,25 @@ export async function shopifyGetCheckout(
   `;
 
   const data = await shopifyFetch<{
-    node: ShopifyCheckout;
-  }>(query, { id: checkoutId });
+    cart: ShopifyCart | null;
+  }>(query, { id: cartId });
 
-  const checkout = data.node;
+  const cart = data.cart;
+  if (!cart) {
+    throw new Error("Cart not found");
+  }
 
   return {
-    id: checkout.id,
-    webUrl: checkout.webUrl,
-    ready: checkout.ready,
-    requiresShipping: checkout.requiresShipping,
-    subtotal: parseFloat(checkout.subtotalPriceV2.amount),
-    totalTax: parseFloat(checkout.totalTaxV2.amount),
-    totalPrice: parseFloat(checkout.totalPriceV2.amount),
-    currency: checkout.totalPriceV2.currencyCode,
-    lineItems: checkout.lineItems.edges.map((edge) => ({
+    id: cart.id,
+    webUrl: cart.checkoutUrl,
+    totalAmount: parseFloat(cart.totalAmount.amount),
+    currency: cart.totalAmount.currencyCode,
+    lineItems: cart.lines.edges.map((edge) => ({
       id: edge.node.id,
-      title: edge.node.title,
+      title: edge.node.merchandise.title,
       quantity: edge.node.quantity,
-      price: edge.node.variant
-        ? parseFloat(edge.node.variant.priceV2.amount)
-        : 0,
-      variantId: edge.node.variant?.id || null,
-      variantTitle: edge.node.variant?.title || null,
+      price: parseFloat(edge.node.merchandise.priceV2.amount),
+      variantId: edge.node.merchandise.id,
     })),
   };
 }

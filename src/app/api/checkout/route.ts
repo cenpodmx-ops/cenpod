@@ -1,17 +1,17 @@
 import { NextResponse } from "next/server";
 import {
-  shopifyCreateCheckout,
-  shopifyGetCheckout,
+  shopifyCreateCart,
+  shopifyGetCart,
 } from "@/lib/shopify";
 
-interface CheckoutLineItem {
+interface CartLineItem {
   variantId: string;
   quantity: number;
 }
 
 /**
  * POST /api/checkout
- * Create a Shopify checkout session from cart items.
+ * Create a Shopify Cart from cart items and return the checkout URL.
  *
  * Body: { lineItems: { variantId: string; quantity: number }[] }
  * Response: { id: string; webUrl: string }
@@ -19,7 +19,7 @@ interface CheckoutLineItem {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { lineItems } = body as { lineItems: CheckoutLineItem[] };
+    const { lineItems } = body as { lineItems: CartLineItem[] };
 
     if (!lineItems || !Array.isArray(lineItems) || lineItems.length === 0) {
       return NextResponse.json(
@@ -38,44 +38,44 @@ export async function POST(request: Request) {
       }
     }
 
-    const checkout = await shopifyCreateCheckout(lineItems);
+    const cart = await shopifyCreateCart(lineItems);
 
-    return NextResponse.json(checkout, { status: 201 });
+    return NextResponse.json(cart, { status: 201 });
   } catch (error) {
-    console.error("Error creating Shopify checkout:", error);
+    console.error("Error creating Shopify cart:", error);
     return NextResponse.json(
-      { error: "Error creating checkout" },
+      { error: "Error creating cart" },
       { status: 500 }
     );
   }
 }
 
 /**
- * GET /api/checkout?checkoutId=xxx
- * Get the status of a Shopify checkout session.
+ * GET /api/checkout?cartId=xxx
+ * Get the status of a Shopify Cart.
  *
- * Query params: checkoutId (required)
- * Response: { id, webUrl, ready, requiresShipping, subtotal, totalTax, totalPrice, currency, lineItems }
+ * Query params: cartId (required), checkoutId (legacy alias for cartId)
+ * Response: { id, webUrl, totalAmount, currency, lineItems }
  */
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const checkoutId = searchParams.get("checkoutId");
+    const cartId = searchParams.get("cartId") || searchParams.get("checkoutId");
 
-    if (!checkoutId) {
+    if (!cartId) {
       return NextResponse.json(
-        { error: "checkoutId query parameter is required" },
+        { error: "cartId query parameter is required" },
         { status: 400 }
       );
     }
 
-    const checkout = await shopifyGetCheckout(checkoutId);
+    const cart = await shopifyGetCart(cartId);
 
-    return NextResponse.json(checkout);
+    return NextResponse.json(cart);
   } catch (error) {
-    console.error("Error fetching Shopify checkout:", error);
+    console.error("Error fetching Shopify cart:", error);
     return NextResponse.json(
-      { error: "Error fetching checkout" },
+      { error: "Error fetching cart" },
       { status: 500 }
     );
   }

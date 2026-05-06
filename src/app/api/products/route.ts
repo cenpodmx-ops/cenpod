@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { shopifyGetProducts } from "@/lib/shopify";
 import { db } from "@/lib/db";
+import { getDemoProducts } from "@/lib/demo-data";
 
 export async function GET(request: Request) {
   try {
@@ -29,26 +30,54 @@ export async function GET(request: Request) {
     // Use the first category handle if filtering by category
     const collectionHandle = category ? category.split(",")[0] : undefined;
 
-    const result = await shopifyGetProducts({
-      query: q || undefined,
-      collectionHandle,
-      sort,
-      tags: tags.length > 0 ? tags : undefined,
-      page,
-      limit,
-      featured,
-      professional,
-      minPrice,
-      maxPrice,
-    });
+    // Try Shopify first, fall back to demo data
+    try {
+      const result = await shopifyGetProducts({
+        query: q || undefined,
+        collectionHandle,
+        sort,
+        tags: tags.length > 0 ? tags : undefined,
+        page,
+        limit,
+        featured,
+        professional,
+        minPrice,
+        maxPrice,
+      });
 
-    return NextResponse.json(result, {
-      headers: {
-        "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120",
-      },
-    });
+      return NextResponse.json(result, {
+        headers: {
+          "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120",
+        },
+      });
+    } catch (shopifyError) {
+      console.warn(
+        "Shopify unavailable, using demo data:",
+        shopifyError instanceof Error ? shopifyError.message : shopifyError
+      );
+
+      // Fall back to demo data with the same filtering/pagination
+      const demoResult = getDemoProducts({
+        q,
+        category,
+        usage,
+        minPrice,
+        maxPrice,
+        sort,
+        featured,
+        professional,
+        page,
+        limit,
+      });
+
+      return NextResponse.json(demoResult, {
+        headers: {
+          "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120",
+        },
+      });
+    }
   } catch (error) {
-    console.error("Error fetching products from Shopify:", error);
+    console.error("Error fetching products:", error);
     return NextResponse.json(
       { error: "Error fetching products" },
       { status: 500 }

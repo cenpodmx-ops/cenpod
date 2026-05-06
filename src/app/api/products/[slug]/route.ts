@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { shopifyGetProductByHandle } from "@/lib/shopify";
 import { db } from "@/lib/db";
+import { getDemoProductBySlug } from "@/lib/demo-data";
 
 export async function GET(
   request: Request,
@@ -8,22 +9,47 @@ export async function GET(
 ) {
   try {
     const { slug } = await params;
-    const product = await shopifyGetProductByHandle(slug);
 
-    if (!product) {
-      return NextResponse.json(
-        { error: "Product not found" },
-        { status: 404 }
+    // Try Shopify first, fall back to demo data
+    try {
+      const product = await shopifyGetProductByHandle(slug);
+
+      if (!product) {
+        return NextResponse.json(
+          { error: "Product not found" },
+          { status: 404 }
+        );
+      }
+
+      return NextResponse.json(product, {
+        headers: {
+          "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120",
+        },
+      });
+    } catch (shopifyError) {
+      console.warn(
+        "Shopify unavailable, using demo data for product:",
+        shopifyError instanceof Error ? shopifyError.message : shopifyError
       );
-    }
 
-    return NextResponse.json(product, {
-      headers: {
-        "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120",
-      },
-    });
+      // Fall back to demo data
+      const demoProduct = getDemoProductBySlug(slug);
+
+      if (!demoProduct) {
+        return NextResponse.json(
+          { error: "Product not found" },
+          { status: 404 }
+        );
+      }
+
+      return NextResponse.json(demoProduct, {
+        headers: {
+          "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120",
+        },
+      });
+    }
   } catch (error) {
-    console.error("Error fetching product from Shopify:", error);
+    console.error("Error fetching product:", error);
     return NextResponse.json(
       { error: "Error fetching product" },
       { status: 500 }
