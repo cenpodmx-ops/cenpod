@@ -11,6 +11,7 @@ import {
   formatPrice,
   parseImages,
   getDiscountPercentage,
+  getVariantId,
 } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -221,6 +222,7 @@ function ProductCard({
                 image: images[0] || "",
                 maxStock: product.stock,
                 quantity: 1,
+                variantId: getVariantId(product),
               })
             }
             aria-label={`Agregar ${product.name} al carrito`}

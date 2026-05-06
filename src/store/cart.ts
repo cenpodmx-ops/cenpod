@@ -10,6 +10,7 @@ export interface CartItem {
   image: string;
   quantity: number;
   variant?: string;
+  variantId?: string; // Shopify variant ID for checkout
   maxStock: number;
 }
 

@@ -122,6 +122,19 @@ export function getDiscountPercentage(
   return Math.round(((comparePrice - price) / comparePrice) * 100);
 }
 
+/**
+ * Extract the first Shopify variant ID from a product's variants JSON.
+ * This is needed for creating Shopify checkouts.
+ */
+export function getVariantId(product: Product): string | undefined {
+  try {
+    const variants = JSON.parse(product.variants);
+    return variants[0]?.id || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export const ORDER_STATUS_MAP: Record<
   string,
   { label: string; color: string; bgColor: string }

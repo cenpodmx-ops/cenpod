@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { shopifySearchProducts } from "@/lib/shopify";
 
 export async function GET(request: Request) {
   try {
@@ -10,23 +10,15 @@ export async function GET(request: Request) {
       return NextResponse.json({ products: [], total: 0 });
     }
 
-    const products = await db.product.findMany({
-      where: {
-        status: "active",
-        OR: [
-          { name: { contains: q } },
-          { description: { contains: q } },
-          { sku: { contains: q } },
-        ],
-      },
-      include: { category: true },
-      take: 10,
-      orderBy: { rating: "desc" },
-    });
+    const result = await shopifySearchProducts(q, 10);
 
-    return NextResponse.json({ products, total: products.length });
+    return NextResponse.json(result, {
+      headers: {
+        "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60",
+      },
+    });
   } catch (error) {
-    console.error("Error searching products:", error);
+    console.error("Error searching products on Shopify:", error);
     return NextResponse.json({ error: "Error searching" }, { status: 500 });
   }
 }

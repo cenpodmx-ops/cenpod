@@ -5,7 +5,7 @@ import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
 import { useNavigationStore } from "@/store/navigation";
 import { useCartStore } from "@/store/cart";
-import { Product, Category, formatPrice, parseImages, getDiscountPercentage } from "@/types";
+import { Product, Category, formatPrice, parseImages, getDiscountPercentage, getVariantId } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -181,6 +181,7 @@ function ProductCard({ product, index }: { product: Product; index: number }) {
                 image: images[0] || "",
                 maxStock: product.stock,
                 quantity: 1,
+                variantId: getVariantId(product),
               })
             }
             aria-label={`Agregar ${product.name} al carrito`}

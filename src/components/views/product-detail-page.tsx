@@ -11,6 +11,7 @@ import {
   parseImages,
   parseTags,
   getDiscountPercentage,
+  getVariantId,
 } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -186,6 +187,7 @@ function SmallProductCard({ product }: { product: Product }) {
                 image: images[0] || "",
                 maxStock: product.stock,
                 quantity: 1,
+                variantId: getVariantId(product),
               });
             }}
           >
@@ -274,6 +276,7 @@ export default function ProductDetailPage() {
       image: images[0] || "",
       maxStock: product.stock,
       quantity,
+      variantId: getVariantId(product),
     });
   }, [product, quantity, addItem]);
 

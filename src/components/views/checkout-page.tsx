@@ -487,14 +487,84 @@ export default function CheckoutPage() {
   );
 
   /* ──── Confirm Order ──── */
-  const onPaymentSubmit = async (data: PaymentFormData) => {
+  const onPaymentSubmit = async () => {
     setIsSubmitting(true);
     try {
-      const shippingData = shippingForm.getValues();
+      // Build Shopify line items from cart
+      const lineItems = items
+        .filter((item) => item.variantId) // Only items with Shopify variant IDs
+        .map((item) => ({
+          variantId: item.variantId!,
+          quantity: item.quantity,
+        }));
+
+      if (lineItems.length === 0) {
+        // Fallback: create local order if no Shopify variant IDs
+        const finalShippingCost = freeShipping ? 0 : (shippingMethod?.price ?? 0);
+        const total = subtotal + finalShippingCost;
+        const shippingData = shippingForm.getValues();
+
+        const response = await fetch("/api/orders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            subtotal,
+            shipping: finalShippingCost,
+            discount: 0,
+            total,
+            shippingMethod: shippingMethod?.name || selectedShipping,
+            shippingAddress: {
+              fullName: shippingData.fullName,
+              email: shippingData.email,
+              phone: shippingData.phone,
+              street: shippingData.street,
+              neighborhood: shippingData.neighborhood,
+              postalCode: shippingData.postalCode,
+              city: shippingData.city,
+              state: shippingData.state,
+            },
+            paymentMethod: "local",
+            items: items.map((item) => ({
+              name: item.name,
+              price: item.price,
+              quantity: item.quantity,
+              image: item.image,
+              productId: item.id,
+              variant: item.variant || null,
+            })),
+          }),
+        });
+
+        if (!response.ok) throw new Error("Error al crear el pedido");
+        const order = await response.json();
+
+        setOrderData({
+          orderNumber: order.orderNumber,
+          total,
+          shippingMethod: shippingMethod?.name || selectedShipping,
+          estimatedDelivery: shippingMethod?.days || "3-5 días hábiles",
+        });
+        setOrderConfirmed(true);
+        return;
+      }
+
+      // Create Shopify checkout
+      const checkoutResponse = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lineItems }),
+      });
+
+      if (!checkoutResponse.ok) throw new Error("Error al crear el checkout");
+
+      const checkout = await checkoutResponse.json();
+
+      // Also create a local order for tracking
       const finalShippingCost = freeShipping ? 0 : (shippingMethod?.price ?? 0);
       const total = subtotal + finalShippingCost;
+      const shippingData = shippingForm.getValues();
 
-      const response = await fetch("/api/orders", {
+      await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -513,7 +583,8 @@ export default function CheckoutPage() {
             city: shippingData.city,
             state: shippingData.state,
           },
-          paymentMethod: "card",
+          paymentMethod: "shopify",
+          paymentId: checkout.id,
           items: items.map((item) => ({
             name: item.name,
             price: item.price,
@@ -525,17 +596,8 @@ export default function CheckoutPage() {
         }),
       });
 
-      if (!response.ok) throw new Error("Error al crear el pedido");
-
-      const order = await response.json();
-
-      setOrderData({
-        orderNumber: order.orderNumber,
-        total,
-        shippingMethod: shippingMethod?.name || selectedShipping,
-        estimatedDelivery: shippingMethod?.days || "3-5 días hábiles",
-      });
-      setOrderConfirmed(true);
+      // Redirect to Shopify checkout
+      window.location.href = checkout.webUrl;
     } catch (error) {
       console.error("Order error:", error);
     } finally {
@@ -967,7 +1029,7 @@ export default function CheckoutPage() {
                 </motion.div>
               )}
 
-              {/* ──── STEP 3: Payment ──── */}
+              {/* ──── STEP 3: Payment via Shopify ──── */}
               {currentStep === 3 && (
                 <motion.div
                   key="step3"
@@ -985,165 +1047,110 @@ export default function CheckoutPage() {
                       </div>
                       <div>
                         <h2 className="font-heading text-lg font-bold text-navy">
-                          Pago
+                          Pago seguro
                         </h2>
                         <p className="text-sm text-gray-500">
-                          Ingresa los datos de tu tarjeta
+                          Serás redirigido al checkout seguro de Shopify
                         </p>
                       </div>
                     </div>
 
-                    {/* Card Preview */}
-                    <div className="mb-6">
-                      <CardPreview
-                        cardNumber={cardNumberValue || ""}
-                        expiry={expiryValue || ""}
-                        cardHolder={cardHolderValue || ""}
-                      />
+                    {/* Shopify checkout info */}
+                    <div className="rounded-xl bg-blue-light p-5 mb-6">
+                      <div className="flex items-start gap-3">
+                        <Shield className="h-6 w-6 text-navy shrink-0 mt-0.5" />
+                        <div>
+                          <h3 className="font-heading text-base font-bold text-navy mb-1">
+                            Checkout seguro con Shopify
+                          </h3>
+                          <p className="text-sm text-gray-dark leading-relaxed">
+                            Al continuar, serás redirigido a la pasarela de pago segura de Shopify. 
+                            Tu información de pago está protegida con encriptación de nivel bancario.
+                          </p>
+                          <div className="flex flex-wrap gap-2 mt-3">
+                            <Badge className="bg-white text-navy text-xs border border-gray-200 hover:bg-white">
+                              🔒 SSL Encriptado
+                            </Badge>
+                            <Badge className="bg-white text-navy text-xs border border-gray-200 hover:bg-white">
+                              💳 Tarjeta / OXXO / Transferencia
+                            </Badge>
+                            <Badge className="bg-white text-navy text-xs border border-gray-200 hover:bg-white">
+                              🇲🇽 Pagos en MXN
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
-                    <form
-                      onSubmit={paymentForm.handleSubmit(onPaymentSubmit)}
-                      className="space-y-4"
-                    >
-                      {/* Card Number */}
-                      <div className="space-y-1.5">
-                        <Label
-                          htmlFor="cardNumber"
-                          className="text-sm font-medium text-gray-700"
-                        >
-                          Número de tarjeta
-                        </Label>
-                        <Input
-                          id="cardNumber"
-                          placeholder="1234 5678 9012 3456"
-                          maxLength={19}
-                          className="h-11 rounded-lg border-gray-200 font-mono focus:border-navy focus:ring-navy/20"
-                          value={paymentForm.watch("cardNumber")}
-                          onChange={handleCardNumberChange}
-                        />
-                        {paymentForm.formState.errors.cardNumber && (
-                          <p className="text-xs text-red-500">
-                            {paymentForm.formState.errors.cardNumber.message}
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Expiry & CVV */}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                          <Label
-                            htmlFor="expiry"
-                            className="text-sm font-medium text-gray-700"
-                          >
-                            Fecha de expiración
-                          </Label>
-                          <Input
-                            id="expiry"
-                            placeholder="MM/AA"
-                            maxLength={5}
-                            className="h-11 rounded-lg border-gray-200 font-mono focus:border-navy focus:ring-navy/20"
-                            value={paymentForm.watch("expiry")}
-                            onChange={handleExpiryChange}
-                          />
-                          {paymentForm.formState.errors.expiry && (
-                            <p className="text-xs text-red-500">
-                              {paymentForm.formState.errors.expiry.message}
-                            </p>
-                          )}
+                    {/* Order summary review */}
+                    <div className="rounded-xl border border-gray-200 p-4 mb-6">
+                      <h4 className="text-sm font-semibold text-navy mb-3">Resumen de tu pedido</h4>
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-500">Productos ({items.length})</span>
+                          <span className="font-medium text-navy">{formatPrice(subtotal)}</span>
                         </div>
-                        <div className="space-y-1.5">
-                          <Label
-                            htmlFor="cvv"
-                            className="text-sm font-medium text-gray-700"
-                          >
-                            CVV
-                          </Label>
-                          <Input
-                            id="cvv"
-                            type="password"
-                            placeholder="•••"
-                            maxLength={4}
-                            className="h-11 rounded-lg border-gray-200 font-mono focus:border-navy focus:ring-navy/20"
-                            value={paymentForm.watch("cvv")}
-                            onChange={handleCvvChange}
-                          />
-                          {paymentForm.formState.errors.cvv && (
-                            <p className="text-xs text-red-500">
-                              {paymentForm.formState.errors.cvv.message}
-                            </p>
-                          )}
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-500">Envío ({shippingMethod?.name || "Sin seleccionar"})</span>
+                          <span className="font-medium text-navy">
+                            {freeShipping ? "Gratis" : shippingMethod ? formatPrice(shippingCost) : "--"}
+                          </span>
+                        </div>
+                        <Separator className="my-2" />
+                        <div className="flex justify-between text-base">
+                          <span className="font-bold text-navy">Total</span>
+                          <span className="font-bold text-navy">{formatPrice(subtotal + (freeShipping ? 0 : shippingCost))}</span>
                         </div>
                       </div>
+                    </div>
 
-                      {/* Card Holder */}
-                      <div className="space-y-1.5">
-                        <Label
-                          htmlFor="cardHolder"
-                          className="text-sm font-medium text-gray-700"
-                        >
-                          Nombre del titular
-                        </Label>
-                        <Input
-                          id="cardHolder"
-                          placeholder="JUAN PÉREZ GARCÍA"
-                          className="h-11 rounded-lg border-gray-200 uppercase focus:border-navy focus:ring-navy/20"
-                          {...paymentForm.register("cardHolder")}
-                        />
-                        {paymentForm.formState.errors.cardHolder && (
-                          <p className="text-xs text-red-500">
-                            {paymentForm.formState.errors.cardHolder.message}
-                          </p>
+                    <div className="mt-6 flex gap-3">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={goBack}
+                        className="h-12 rounded-xl border-gray-300 text-gray-600 hover:bg-gray-50"
+                      >
+                        <ChevronLeft className="mr-1 h-4 w-4" />
+                        Regresar
+                      </Button>
+                      <Button
+                        type="button"
+                        disabled={isSubmitting}
+                        onClick={onPaymentSubmit}
+                        className="h-12 flex-1 rounded-xl bg-navy text-white hover:bg-navy-light disabled:opacity-70"
+                      >
+                        {isSubmitting ? (
+                          <span className="flex items-center gap-2">
+                            <svg
+                              className="h-4 w-4 animate-spin"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                            >
+                              <circle
+                                className="opacity-25"
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                strokeWidth="4"
+                              />
+                              <path
+                                className="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                              />
+                            </svg>
+                            Procesando...
+                          </span>
+                        ) : (
+                          <>
+                            <Lock className="mr-2 h-4 w-4" />
+                            Proceder al pago seguro
+                          </>
                         )}
-                      </div>
-
-                      <div className="mt-6 flex gap-3">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={goBack}
-                          className="h-12 rounded-xl border-gray-300 text-gray-600 hover:bg-gray-50"
-                        >
-                          <ChevronLeft className="mr-1 h-4 w-4" />
-                          Regresar
-                        </Button>
-                        <Button
-                          type="submit"
-                          disabled={isSubmitting}
-                          className="h-12 flex-1 rounded-xl bg-navy text-white hover:bg-navy-light disabled:opacity-70"
-                        >
-                          {isSubmitting ? (
-                            <span className="flex items-center gap-2">
-                              <svg
-                                className="h-4 w-4 animate-spin"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                              >
-                                <circle
-                                  className="opacity-25"
-                                  cx="12"
-                                  cy="12"
-                                  r="10"
-                                  stroke="currentColor"
-                                  strokeWidth="4"
-                                />
-                                <path
-                                  className="opacity-75"
-                                  fill="currentColor"
-                                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                                />
-                              </svg>
-                              Procesando...
-                            </span>
-                          ) : (
-                            <>
-                              <Lock className="mr-2 h-4 w-4" />
-                              Confirmar pedido
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    </form>
+                      </Button>
+                    </div>
                   </div>
                 </motion.div>
               )}

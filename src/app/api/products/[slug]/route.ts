@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { shopifyGetProductByHandle } from "@/lib/shopify";
 import { db } from "@/lib/db";
 
 export async function GET(
@@ -7,10 +8,7 @@ export async function GET(
 ) {
   try {
     const { slug } = await params;
-    const product = await db.product.findUnique({
-      where: { slug },
-      include: { category: true },
-    });
+    const product = await shopifyGetProductByHandle(slug);
 
     if (!product) {
       return NextResponse.json(
@@ -19,9 +17,13 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(product);
+    return NextResponse.json(product, {
+      headers: {
+        "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120",
+      },
+    });
   } catch (error) {
-    console.error("Error fetching product:", error);
+    console.error("Error fetching product from Shopify:", error);
     return NextResponse.json(
       { error: "Error fetching product" },
       { status: 500 }

@@ -136,3 +136,60 @@ Stage Summary:
 - Complete admin panel with product and order management
 - Revenue chart and metric cards
 - Full CRUD operations via API
+
+---
+Task ID: 2
+Agent: full-stack-developer
+Task: Build Shopify Storefront API client and update API routes
+
+Work Log:
+- Created /src/lib/shopify.ts with complete Shopify Storefront API client library
+  - GraphQL fetch helper with error handling
+  - Reusable fragments for product, variant, and image data
+  - shopifyGetProducts() with filtering (query, collection, tags, price), sorting (6 sort mappings), and pagination
+  - shopifyGetProductByHandle() for single product lookups
+  - shopifyGetCollections() mapping collections to categories with productCount
+  - shopifySearchProducts() using RELEVANCE sort key
+  - shopifyCreateCheckout() and shopifyGetCheckout() for checkout flow
+  - Full Shopify → Product/Category type mapping (handle→slug, title→name, tags→featured/professional flags, etc.)
+  - Client-side price filtering for minPrice/maxPrice (Shopify Storefront API limitation)
+- Created /.env.local with NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN and NEXT_PUBLIC_SHOPIFY_STOREFRONT_TOKEN placeholders
+- Updated /src/app/api/products/route.ts GET to use shopifyGetProducts(), POST kept with Prisma for admin
+- Updated /src/app/api/categories/route.ts to use shopifyGetCollections()
+- Updated /src/app/api/products/[slug]/route.ts GET to use shopifyGetProductByHandle(), PUT/DELETE kept with Prisma
+- Updated /src/app/api/search/route.ts to use shopifySearchProducts()
+- Created /src/app/api/checkout/route.ts with POST (create checkout) and GET (checkout status)
+- Updated next.config.ts with Shopify image remotePatterns (cdn.shopify.com, *.myshopify.com)
+- Added Cache-Control headers (s-maxage=60, stale-while-revalidate=120) for product/category responses
+- All lint checks pass
+
+Stage Summary:
+- Shopify Storefront API client fully implemented at /src/lib/shopify.ts
+- All product-facing API routes (GET) now use Shopify instead of Prisma/SQLite
+- Admin write operations (POST/PUT/DELETE) retained with Prisma for local management
+- New /api/checkout route for Shopify checkout creation and status
+- API response format unchanged — frontend requires no modifications
+- Environment variables configured in .env.local (placeholder values for deployment)
+
+---
+Task ID: 5
+Agent: Main Developer
+Task: Update checkout and cart to support Shopify checkout flow
+
+Work Log:
+- Added `variantId` field to CartItem interface in /src/store/cart.ts
+- Added `getVariantId()` helper to /src/types/index.ts for extracting Shopify variant IDs from product variants JSON
+- Updated home-page.tsx, catalog-page.tsx, product-detail-page.tsx to pass `variantId` when adding items to cart
+- Replaced Step 3 (credit card form) in checkout-page.tsx with Shopify checkout redirect
+  - New Step 3 shows Shopify secure checkout info, order summary, and "Proceed to secure payment" button
+  - Creates Shopify checkout via /api/checkout, then redirects to Shopify's hosted checkout page
+  - Fallback to local order creation if no Shopify variant IDs available
+  - Also creates a local order record for tracking purposes
+- Updated .env.local with detailed Spanish instructions for obtaining Shopify credentials
+- All lint checks pass
+
+Stage Summary:
+- Cart now stores Shopify variant IDs for checkout
+- Checkout flow redirects to Shopify's secure hosted checkout
+- Local order tracking preserved as backup
+- All product add-to-cart actions include variantId
