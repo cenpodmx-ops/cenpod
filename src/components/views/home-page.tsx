@@ -227,18 +227,21 @@ export default function HomePage() {
     <div className="flex flex-col min-h-screen">
       {/* ─── 1. HERO SECTION ──────────────────────────────────────────── */}
       <section className="relative bg-navy flex items-center justify-center overflow-hidden h-[100svh] md:h-[90vh]">
+        {/* Hero background image */}
+        <div className="absolute inset-0">
+          <img
+            src="/images/hero-banner.png"
+            alt="Consultorio de podología profesional"
+            className="w-full h-full object-cover opacity-30"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-navy via-navy/80 to-navy/60" />
+        </div>
+
         {/* Decorative background shapes */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute -top-20 -right-20 w-96 h-96 bg-navy-200/5 rounded-full blur-3xl" />
           <div className="absolute top-1/3 -left-32 w-72 h-72 bg-navy-200/5 rounded-full blur-2xl" />
           <div className="absolute bottom-0 right-1/4 w-64 h-64 bg-navy-200/8 rounded-full blur-2xl" />
-
-          {/* Decorative medical icons */}
-          <Cross className="absolute top-[15%] right-[12%] w-16 h-16 text-white/[0.03] rotate-12" />
-          <Activity className="absolute bottom-[25%] left-[8%] w-20 h-20 text-white/[0.04] -rotate-12" />
-          <Stethoscope className="absolute top-[40%] right-[25%] w-24 h-24 text-white/[0.03]" />
-          <Heart className="absolute bottom-[15%] right-[15%] w-14 h-14 text-white/[0.04] rotate-45" />
-          <Sparkles className="absolute top-[20%] left-[18%] w-12 h-12 text-white/[0.03]" />
         </div>
 
         <div className="relative z-10 max-w-4xl mx-auto px-6 text-center">
@@ -634,13 +637,12 @@ function ProfessionalSection({
             transition={{ duration: 0.7, delay: 0.2 }}
             className="relative"
           >
-            <div className="aspect-[4/3] rounded-2xl bg-gradient-to-br from-navy-light via-[#1a5a7a] to-navy-200/30 overflow-hidden flex items-center justify-center">
-              <div className="text-center">
-                <Stethoscope className="w-20 h-20 text-white/20 mx-auto mb-4" />
-                <p className="text-white/30 text-sm font-medium">
-                  Línea Profesional CENPOD
-                </p>
-              </div>
+            <div className="aspect-[4/3] rounded-2xl overflow-hidden flex items-center justify-center">
+              <img
+                src="/images/professional-line.png"
+                alt="Línea profesional de instrumentos CENPOD"
+                className="w-full h-full object-cover"
+              />
             </div>
 
             {/* Decorative accent */}
