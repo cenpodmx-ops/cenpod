@@ -44,3 +44,22 @@ Stage Summary:
 - App shows connection status in the header top bar
 - All existing functionality preserved with demo data fallback
 - User needs to: 1) Go to dev.shopify.com, 2) Create app, 3) Get Client ID + Client Secret, 4) Put them in .env.local
+
+---
+Task ID: 1
+Agent: Main
+Task: Fix Shopify connection and verify product display
+
+Work Log:
+- Created diagnostic endpoint at /api/shopify/diagnostic for step-by-step connection testing
+- Confirmed all 5 diagnostic steps pass: env vars ✅, admin token ✅, storefront tokens ✅, storefront API ✅, admin API ✅
+- Verified LODOAL TERBINAFINA product ($250, stock 22) appears correctly in CENPOD API
+- Fixed homepage: when no featured products exist, falls back to showing all products (newest first)
+- Identified that Shopify native store (distribuidoracenpod.myshopify.com) is password-protected but does not affect CENPOD headless frontend
+
+Stage Summary:
+- Shopify connection is 100% working via client credentials grant
+- Products from Shopify appear in CENPOD within seconds of being added
+- User needs to understand: CENPOD (Preview Panel) ≠ Shopify native store
+- Store has 5 products: 1 real (LODOAL TERBINAFINA) + 4 Shopify example products
+- 2 collections: "Página de inicio" + "Productos de ejemplo de Salud"

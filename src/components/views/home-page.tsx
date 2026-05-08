@@ -213,7 +213,15 @@ export default function HomePage() {
         const catData = await catRes.json();
         const prodData = await prodRes.json();
         setCategories(Array.isArray(catData) ? catData : []);
-        setProducts(prodData.products || []);
+
+        // If no featured products found, try fetching all products
+        let prods = prodData.products || [];
+        if (prods.length === 0) {
+          const allRes = await fetch("/api/products?limit=8&sort=newest");
+          const allData = await allRes.json();
+          prods = allData.products || [];
+        }
+        setProducts(prods);
       } catch (err) {
         console.error("Error fetching data:", err);
       } finally {
