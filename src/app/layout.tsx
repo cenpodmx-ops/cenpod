@@ -20,35 +20,35 @@ const outfit = Outfit({
 export const metadata: Metadata = {
   title: {
     template: "%s | CENPOD",
-    default: "CENPOD — Productos de Podología Profesional",
+    default: "CENPOD — CENTRO PODOLÓGICO",
   },
   description:
-    "Tienda en línea de productos de podología profesional. Equipamiento, insumos y herramientas para podólogos.",
+    "CENTRO PODOLÓGICO — Tienda en línea de instrumentos, insumos y equipamiento profesional para podólogos.",
   keywords: [
     "podología",
     "productos podología",
     "equipamiento podólogo",
     "insumos podología",
     "CENPOD",
-    "podología profesional",
+    "CENTRO PODOLÓGICO",
   ],
   authors: [{ name: "CENPOD" }],
   icons: {
     icon: "/favicon.ico",
   },
   openGraph: {
-    title: "CENPOD — Productos de Podología Profesional",
+    title: "CENPOD — CENTRO PODOLÓGICO",
     description:
-      "Tienda en línea de productos de podología profesional. Equipamiento, insumos y herramientas para podólogos.",
+      "CENTRO PODOLÓGICO — Tienda en línea de instrumentos, insumos y equipamiento profesional para podólogos.",
     siteName: "CENPOD",
     type: "website",
     locale: "es_MX",
   },
   twitter: {
     card: "summary_large_image",
-    title: "CENPOD — Productos de Podología Profesional",
+    title: "CENPOD — CENTRO PODOLÓGICO",
     description:
-      "Tienda en línea de productos de podología profesional.",
+      "CENTRO PODOLÓGICO — Tienda en línea de instrumentos, insumos y equipamiento profesional.",
   },
 };
 

@@ -12,17 +12,16 @@ export function Footer() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
           {/* Brand */}
           <div className="sm:col-span-2 lg:col-span-1">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center">
-                <span className="text-navy font-bold text-lg font-heading">C</span>
-              </div>
-              <div>
-                <h3 className="font-heading font-bold text-xl">CENPOD</h3>
-                <p className="text-navy-200 text-xs">Podología Profesional</p>
-              </div>
+            <div className="flex items-center gap-3 mb-4">
+              <img
+                src="/images/logo-white.png"
+                alt="CENPOD"
+                className="h-10"
+              />
+              <span className="text-navy-200 text-xs">CENTRO PODOLÓGICO</span>
             </div>
             <p className="text-navy-200 text-sm leading-relaxed">
-              Tu tienda de confianza para productos y equipamiento de podología profesional. 
+              Tu centro de confianza para productos y equipamiento podológico profesional. 
               Calidad y servicio desde México.
             </p>
           </div>

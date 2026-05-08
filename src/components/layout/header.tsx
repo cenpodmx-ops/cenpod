@@ -122,15 +122,22 @@ export function Header() {
               onClick={() => navigate("home")}
               className="flex items-center gap-2 shrink-0"
             >
-              <div className="w-10 h-10 bg-navy rounded-xl flex items-center justify-center">
-                <span className="text-white font-bold text-lg font-heading">C</span>
-              </div>
+              <img
+                src="/images/logo-navy.png"
+                alt="CENPOD logo"
+                className="h-10 w-auto dark:hidden"
+              />
+              <img
+                src="/images/logo-white.png"
+                alt="CENPOD logo"
+                className="h-10 w-auto hidden dark:block"
+              />
               <div className="hidden sm:block">
                 <h1 className="text-navy dark:text-white font-heading font-bold text-xl leading-tight">
                   CENPOD
                 </h1>
                 <p className="text-[10px] text-muted-foreground leading-tight">
-                  Podología Profesional
+                  CENTRO PODOLÓGICO
                 </p>
               </div>
             </button>

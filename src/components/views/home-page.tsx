@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion, useInView } from "framer-motion";
+import { motion, AnimatePresence, useInView } from "framer-motion";
 import { useRef } from "react";
 import { useNavigationStore } from "@/store/navigation";
 import { useCartStore } from "@/store/cart";
@@ -25,6 +25,9 @@ import {
   Mail,
   CheckCircle2,
   Sparkles,
+  Microscope,
+  Pill,
+  ClipboardCheck,
 } from "lucide-react";
 
 // ─── Gradient map for product image placeholders ─────────────────────────────
@@ -194,6 +197,213 @@ function ProductCard({ product, index }: { product: Product; index: number }) {
   );
 }
 
+// ─── Hero Tagline Phrases ──────────────────────────────────────────────────────
+const taglinePhrases = [
+  { text: "Instrumentos Quirúrgicos", icon: Microscope },
+  { text: "Insumos Profesionales", icon: Pill },
+  { text: "Equipamiento Clínico", icon: ClipboardCheck },
+];
+
+// ─── Hero Section ──────────────────────────────────────────────────────────────
+function HeroSection({ navigate }: { navigate: (view: "catalog", params?: Record<string, unknown>) => void }) {
+  const [taglineIndex, setTaglineIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTaglineIndex((prev) => (prev + 1) % taglinePhrases.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <section className="relative flex items-center justify-center overflow-hidden h-[100svh] md:h-[92vh]">
+      {/* Animated gradient background */}
+      <div className="absolute inset-0 hero-gradient-animated" />
+
+      {/* Hero background image – subtle overlay */}
+      <div className="absolute inset-0">
+        <img
+          src="/images/hero-banner.png"
+          alt="Consultorio CENTRO PODOLÓGICO"
+          className="w-full h-full object-cover opacity-15"
+        />
+      </div>
+
+      {/* Dot pattern overlay */}
+      <div className="absolute inset-0 hero-dot-pattern pointer-events-none" />
+
+      {/* Radial vignette */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_40%,rgba(7,37,51,0.6)_100%)] pointer-events-none" />
+
+      {/* ─── Floating Decorative Elements ────────────────────────────────── */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {/* Large pulsing circles */}
+        <div className="hero-pulse-glow absolute top-[12%] left-[8%] w-40 h-40 rounded-full bg-navy-200/10 blur-2xl" />
+        <div className="hero-pulse-glow absolute bottom-[15%] right-[10%] w-52 h-52 rounded-full bg-navy-200/8 blur-3xl" style={{ animationDelay: "2s" }} />
+        <div className="hero-pulse-glow absolute top-[50%] right-[25%] w-32 h-32 rounded-full bg-navy-200/6 blur-2xl" style={{ animationDelay: "1s" }} />
+
+        {/* Floating crosses */}
+        <div className="hero-float-slow absolute top-[18%] right-[12%] opacity-[0.08]">
+          <Cross className="w-12 h-12 text-white" />
+        </div>
+        <div className="hero-float-medium absolute bottom-[25%] left-[10%] opacity-[0.06]">
+          <Cross className="w-8 h-8 text-white" />
+        </div>
+        <div className="hero-float-fast absolute top-[40%] left-[20%] opacity-[0.05]">
+          <Cross className="w-6 h-6 text-white" />
+        </div>
+
+        {/* Floating circles */}
+        <div className="hero-float-slow absolute top-[30%] left-[70%] opacity-[0.07]">
+          <div className="w-4 h-4 rounded-full border border-white/30" />
+        </div>
+        <div className="hero-float-medium absolute bottom-[35%] right-[30%] opacity-[0.05]">
+          <div className="w-3 h-3 rounded-full border border-white/20" />
+        </div>
+        <div className="hero-float-fast absolute top-[60%] left-[40%] opacity-[0.06]">
+          <div className="w-2 h-2 rounded-full bg-white/20" />
+        </div>
+
+        {/* Accent dots */}
+        <div className="hero-float-slow absolute top-[22%] left-[45%] opacity-[0.04]">
+          <div className="w-1.5 h-1.5 rounded-full bg-navy-200" />
+        </div>
+        <div className="hero-float-medium absolute bottom-[40%] left-[60%] opacity-[0.05]">
+          <div className="w-1 h-1 rounded-full bg-navy-200" />
+        </div>
+        <div className="hero-float-fast absolute top-[65%] right-[15%] opacity-[0.04]">
+          <div className="w-1.5 h-1.5 rounded-full bg-navy-200" />
+        </div>
+      </div>
+
+      {/* ─── Content ──────────────────────────────────────────────────────── */}
+      <div className="relative z-10 max-w-4xl mx-auto px-6 text-center">
+        {/* CENPOD Logo */}
+        <motion.div
+          initial={{ opacity: 0, y: -20, scale: 0.9 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="mb-6 flex justify-center"
+        >
+          <img
+            src="/images/logo-white.png"
+            alt="CENPOD"
+            className="h-14 md:h-[60px] w-auto drop-shadow-lg"
+          />
+        </motion.div>
+
+        {/* Main heading */}
+        <motion.h1
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.15 }}
+          className="font-heading text-white leading-[1.1] mb-5 tracking-tight"
+          style={{ fontSize: "clamp(2.8rem, 6vw, 5rem)", fontWeight: 800 }}
+        >
+          CENTRO PODOLÓGICO
+        </motion.h1>
+
+        {/* Animated tagline */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.35 }}
+          className="h-10 md:h-12 flex items-center justify-center mb-8"
+        >
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={taglineIndex}
+              initial={{ opacity: 0, y: 15, filter: "blur(4px)" }}
+              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+              exit={{ opacity: 0, y: -15, filter: "blur(4px)" }}
+              transition={{ duration: 0.5, ease: "easeInOut" }}
+              className="flex items-center gap-2.5"
+            >
+              {(() => {
+                const IconComp = taglinePhrases[taglineIndex].icon;
+                return <IconComp className="w-5 h-5 text-navy-200" />;
+              })()}
+              <span className="text-navy-200 text-lg md:text-2xl font-heading font-medium tracking-wide">
+                {taglinePhrases[taglineIndex].text}
+              </span>
+            </motion.div>
+          </AnimatePresence>
+        </motion.div>
+
+        {/* Subtitle */}
+        <motion.p
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.5 }}
+          className="text-white/60 text-base md:text-lg max-w-xl mx-auto mb-10 leading-relaxed"
+        >
+          Todo lo que necesitas para tu consultorio. Instrumentos, insumos y
+          equipamiento de la más alta calidad profesional.
+        </motion.p>
+
+        {/* CTA Buttons */}
+        <motion.div
+          initial={{ opacity: 0, y: 25 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.65 }}
+          className="flex flex-col sm:flex-row items-center justify-center gap-4"
+        >
+          <Button
+            onClick={() => navigate("catalog")}
+            className="group h-13 px-9 bg-white text-navy font-semibold text-base rounded-xl hover:bg-white/95 hover:scale-[1.03] active:scale-[0.98] transition-all duration-200 hero-cta-glow shadow-lg shadow-white/10"
+          >
+            Ver productos
+            <ChevronRight className="ml-1.5 w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
+          </Button>
+          <Button
+            onClick={() =>
+              navigate("catalog", {
+                catalogFilters: {
+                  q: "",
+                  category: [],
+                  usage: ["professional"],
+                  minPrice: 0,
+                  maxPrice: 20000,
+                  sort: "featured",
+                },
+              })
+            }
+            variant="outline"
+            className="group h-13 px-9 border-2 border-navy-200/30 text-white font-semibold text-base rounded-xl bg-white/5 backdrop-blur-sm hover:bg-white/15 hover:border-navy-200/50 hover:scale-[1.03] active:scale-[0.98] transition-all duration-200"
+          >
+            Para profesionales
+            <ArrowRight className="ml-1.5 w-4 h-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300" />
+          </Button>
+        </motion.div>
+
+        {/* Trust indicators inline */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1, delay: 1.2 }}
+          className="mt-14 flex flex-wrap items-center justify-center gap-6 md:gap-10 text-white/40 text-xs md:text-sm"
+        >
+          <div className="flex items-center gap-1.5">
+            <ShieldCheck className="w-4 h-4" />
+            <span>Certificados</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Truck className="w-4 h-4" />
+            <span>Envío gratis +$500</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Headset className="w-4 h-4" />
+            <span>Asesoría experta</span>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Bottom gradient fade */}
+      <div className="absolute bottom-0 left-0 right-0 h-28 bg-gradient-to-t from-white to-transparent" />
+    </section>
+  );
+}
+
 // ─── Main Home Page Component ─────────────────────────────────────────────────
 export default function HomePage() {
   const { navigate } = useNavigationStore();
@@ -234,82 +444,7 @@ export default function HomePage() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* ─── 1. HERO SECTION ──────────────────────────────────────────── */}
-      <section className="relative bg-navy flex items-center justify-center overflow-hidden h-[100svh] md:h-[90vh]">
-        {/* Hero background image */}
-        <div className="absolute inset-0">
-          <img
-            src="/images/hero-banner.png"
-            alt="Consultorio de podología profesional"
-            className="w-full h-full object-cover opacity-30"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-navy via-navy/80 to-navy/60" />
-        </div>
-
-        {/* Decorative background shapes */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-20 -right-20 w-96 h-96 bg-navy-200/5 rounded-full blur-3xl" />
-          <div className="absolute top-1/3 -left-32 w-72 h-72 bg-navy-200/5 rounded-full blur-2xl" />
-          <div className="absolute bottom-0 right-1/4 w-64 h-64 bg-navy-200/8 rounded-full blur-2xl" />
-        </div>
-
-        <div className="relative z-10 max-w-4xl mx-auto px-6 text-center">
-          <motion.h1
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7 }}
-            className="font-heading text-white leading-tight mb-6"
-            style={{ fontSize: "clamp(2.5rem, 5vw, 4rem)" }}
-          >
-            Productos de podología profesional
-          </motion.h1>
-
-          <motion.p
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.2 }}
-            className="text-navy-200 text-lg md:text-xl max-w-2xl mx-auto mb-10"
-          >
-            Todo lo que necesitas para tu consultorio. Instrumentos, insumos y
-            equipamiento de la más alta calidad.
-          </motion.p>
-
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.4 }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4"
-          >
-            <Button
-              onClick={() => navigate("catalog")}
-              className="h-12 px-8 bg-white text-navy font-semibold text-base rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              Ver productos
-              <ChevronRight className="ml-1 w-5 h-5" />
-            </Button>
-            <Button
-              onClick={() =>
-                navigate("catalog", {
-                  catalogFilters: {
-                    q: "",
-                    category: [],
-                    usage: ["professional"],
-                    minPrice: 0,
-                    maxPrice: 20000,
-                    sort: "featured",
-                  },
-                })
-              }
-              variant="outline"
-              className="h-12 px-8 border-white/30 text-white font-semibold text-base rounded-lg bg-transparent hover:bg-white/10 hover:text-white transition-colors"
-            >
-              Para profesionales
-            </Button>
-          </motion.div>
-        </div>
-
-        {/* Bottom gradient fade */}
-        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white to-transparent" />
-      </section>
+      <HeroSection navigate={navigate} />
 
       {/* ─── 2. TRUST BAR ──────────────────────────────────────────────── */}
       <section className="bg-white border-b border-blue-light">

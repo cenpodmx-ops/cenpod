@@ -85,3 +85,87 @@ Stage Summary:
 - Tables: User, Category, Product, Order, OrderItem, WishlistItem
 - All API endpoints working with new database
 - Ready for Vercel deployment
+
+---
+Task ID: 1-b
+Agent: Sub Agent
+Task: Update CENPOD footer component branding
+
+Work Log:
+- Read current footer at src/components/layout/footer.tsx
+- Replaced "C" icon + "CENPOD" heading + "Podología Profesional" subtitle with actual logo image (`/images/logo-white.png`, h-10) + "CENTRO PODOLÓGICO" text
+- Changed "Podología Profesional" → "CENTRO PODOLÓGICO" in the brand section
+- Updated description from "Tu tienda de confianza para productos y equipamiento de podología profesional" to "Tu centro de confianza para productos y equipamiento podológico profesional"
+- Verified no remaining "Podología Profesional" references in footer
+- Confirmed /public/images/logo-white.png exists
+- Lint passes clean
+
+Stage Summary:
+- Footer brand section now uses actual white logo image instead of "C" icon
+- Branding text updated to "CENTRO PODOLÓGICO" throughout footer
+- Description text updated to match "centro" identity
+- All other footer content (links, contact, payment methods) unchanged
+
+---
+Task ID: 1-a
+Agent: Sub Agent
+Task: Update CENPOD header component with logo images and branding
+
+Work Log:
+- Read current header at src/components/layout/header.tsx
+- Replaced the "C" icon (div with bg-navy rounded-xl containing "C") with actual logo images:
+  - Light mode: `/images/logo-navy.png` using `dark:hidden` class
+  - Dark mode: `/images/logo-white.png` using `hidden dark:block` class
+  - Both images use `h-10 w-auto` for proper height and aspect ratio
+- Changed subtitle from "Podología Profesional" to "CENTRO PODOLÓGICO"
+- Verified no remaining "Podología Profesional" references in header file
+- Confirmed both logo images exist in /public/images/
+- Lint passes clean
+
+Stage Summary:
+- Header logo area now shows actual logo images that switch between navy (light mode) and white (dark mode) versions
+- Branding subtitle updated from "Podología Profesional" to "CENTRO PODOLÓGICO"
+- All other header functionality (top bar, nav links, search, cart, wishlist, mobile menu) unchanged
+
+---
+Task ID: 2
+Agent: Main
+Task: Redesign hero/banner section of CENPOD homepage for dynamic/professional look
+
+Work Log:
+- Read existing home-page.tsx, globals.css, layout.tsx to understand current state
+- Added CSS animations to globals.css:
+  - hero-gradient-shift: animated gradient background (12s infinite cycle)
+  - hero-gradient-animated: class applying animated gradient
+  - float-slow/medium/fast: floating element keyframes (3.5-6s cycles)
+  - hero-float-slow/medium/fast: utility classes
+  - pulse-glow: pulsing glow animation for decorative circles
+  - hero-pulse-glow: utility class
+  - hero-dot-pattern: subtle dot pattern overlay using radial-gradient
+  - cta-glow + hero-cta-glow: CTA button hover glow effect
+- Completely redesigned hero section as standalone HeroSection component:
+  - Replaced "Podología Profesional" with "CENTRO PODOLÓGICO" in hero heading and alt text
+  - Added CENPOD white logo (logo-white.png, ~60px height) centered above title with entrance animation
+  - Changed main heading to "CENTRO PODOLÓGICO" with larger font (clamp 2.8rem–5rem), weight 800
+  - Added animated tagline cycling between "Instrumentos Quirúrgicos" (Microscope icon), "Insumos Profesionales" (Pill icon), "Equipamiento Clínico" (ClipboardCheck icon) every 3 seconds using AnimatePresence with blur transition
+  - Added floating/pulsing decorative elements: crosses, circles, accent dots at various positions with different float speeds
+  - Added pulsing glow circles (blur-2xl/3xl) with staggered animation delays
+  - Added animated gradient background replacing static bg-navy
+  - Added subtle dot pattern overlay for depth
+  - Added radial vignette for professional focus effect
+  - Made CTA buttons more prominent: rounded-xl, hover:scale-[1.03], active:scale-[0.98], glow on hover, staggered arrow animations
+  - Added inline trust indicators (Certificados, Envío gratis, Asesoría experta) with fade-in at bottom
+  - Hero background image kept as subtle overlay at opacity-15
+  - Bottom gradient fade extended to h-28 for smoother transition
+- Updated layout.tsx metadata: replaced all "Podología Profesional" references with "CENTRO PODOLÓGICO"
+- Added AnimatePresence import from framer-motion
+- Added Microscope, Pill, ClipboardCheck icon imports from lucide-react
+- Verified all icons exist in lucide-react
+- Lint passes clean, dev server compiles successfully
+
+Stage Summary:
+- Hero section is now a premium, dynamic, professional banner with animated gradient, floating elements, rotating tagline, and prominent CTAs
+- "Podología Profesional" fully replaced with "CENTRO PODOLÓGICO" across home-page.tsx and layout.tsx
+- All other sections (trust bar, categories, featured products, professional, newsletter) unchanged
+- CSS animations use keyframes for performance (no heavy JS animation loops)
+- All existing responsive approach maintained
