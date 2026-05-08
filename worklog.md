@@ -18,3 +18,29 @@ Stage Summary:
 - Demo data now shows real product images instead of gradient placeholders
 - Homepage hero has professional background image
 - Site is fully functional with demo data
+
+---
+Task ID: 3
+Agent: Main Agent
+Task: Update Shopify integration to support Dev Dashboard client credentials grant
+
+Work Log:
+- Read Shopify docs at https://shopify.dev/docs/apps/build/dev-dashboard/get-api-access-tokens
+- Completely rewrote src/lib/shopify.ts to support TWO auth methods:
+  1. Dev Dashboard client credentials grant (SHOPIFY_CLIENT_ID + SHOPIFY_CLIENT_SECRET)
+  2. Legacy Storefront API token (SHOPIFY_STOREFRONT_TOKEN)
+- Added token caching with auto-refresh (5-minute buffer before expiry)
+- Added automatic Storefront Access Token discovery via Admin API (for cart/checkout)
+- Added isShopifyConfigured(), getShopifyAuthMode(), testShopifyConnection() utility functions
+- Created .env.local with new environment variables (SHOPIFY_SHOP, SHOPIFY_CLIENT_ID, SHOPIFY_CLIENT_SECRET, SHOPIFY_STOREFRONT_TOKEN)
+- Created /api/shopify/status endpoint for connection testing
+- Added Shopify connection status indicator to header (green=Shopify, amber=Demo)
+- Fixed lint errors (setState in effect pattern)
+- Verified app compiles and runs correctly
+
+Stage Summary:
+- Shopify client now supports the Dev Dashboard approach (client credentials grant)
+- No more need to hunt for a Storefront API token in the Shopify admin
+- App shows connection status in the header top bar
+- All existing functionality preserved with demo data fallback
+- User needs to: 1) Go to dev.shopify.com, 2) Create app, 3) Get Client ID + Client Secret, 4) Put them in .env.local

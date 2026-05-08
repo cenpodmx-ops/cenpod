@@ -14,10 +14,20 @@ import {
   X,
   Sun,
   Moon,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
 import { useState, useEffect, useRef, useSyncExternalStore } from "react";
 import { useTheme } from "next-themes";
 import { motion, AnimatePresence } from "framer-motion";
+
+interface ShopifyStatus {
+  connected: boolean;
+  authMode: string;
+  message?: string;
+  shop?: string;
+  error?: string;
+}
 
 export function Header() {
   const { navigate, currentView } = useNavigationStore();
@@ -27,6 +37,7 @@ export function Header() {
   const [searchQuery, setSearchQuery] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [shopifyStatus, setShopifyStatus] = useState<ShopifyStatus | null>(null);
   const { theme, setTheme } = useTheme();
   const mounted = useSyncExternalStore(
     () => () => {},
@@ -35,6 +46,23 @@ export function Header() {
   );
   const searchRef = useRef<HTMLInputElement>(null);
   const itemCount = getItemCount();
+
+  // Check Shopify connection status
+  useEffect(() => {
+    let cancelled = false;
+    const check = async () => {
+      try {
+        const res = await fetch("/api/shopify/status");
+        const data = await res.json();
+        if (!cancelled) setShopifyStatus(data);
+      } catch {
+        if (!cancelled) setShopifyStatus({ connected: false, authMode: "none", message: "Could not check status" });
+      }
+    };
+    check();
+    const interval = setInterval(check, 5 * 60 * 1000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -75,9 +103,16 @@ export function Header() {
             : "bg-white dark:bg-[#121212]"
         }`}
       >
-        {/* Top bar - promo */}
-        <div className="bg-navy text-white text-xs py-1.5 text-center">
+        {/* Top bar - promo with Shopify status */}
+        <div className="bg-navy text-white text-xs py-1.5 flex items-center justify-center gap-2">
           <p>Envío gratis en compras mayores a $500 MXN · Equipo profesional para podólogos</p>
+          <span className="hidden sm:inline-flex items-center gap-1 ml-2 px-1.5 py-0.5 rounded-full bg-white/10">
+            {shopifyStatus?.connected ? (
+              <><Wifi className="h-3 w-3 text-green-400" /><span className="text-green-300">Shopify</span></>
+            ) : (
+              <><WifiOff className="h-3 w-3 text-amber-400" /><span className="text-amber-300">Demo</span></>
+            )}
+          </span>
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6">

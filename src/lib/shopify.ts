@@ -1,15 +1,305 @@
 import type { Product, Category } from "@/types";
 
 // ============================================================
-// Shopify Storefront API Client for CENPOD
+// Shopify API Client for CENPOD
+// Supports TWO authentication methods:
+//
+// 1. Dev Dashboard (RECOMMENDED): Client ID + Client Secret
+//    → Uses client credentials grant to get access tokens
+//    → Follows https://shopify.dev/docs/apps/build/dev-dashboard/get-api-access-tokens
+//
+// 2. Legacy Storefront API: Storefront Access Token
+//    → Direct token in X-Shopify-Storefront-Access-Token header
+//    → For older custom apps created in Shopify Admin
+//
+// Falls back to demo data when neither is configured.
 // ============================================================
 
-const SHOPIFY_DOMAIN = process.env.NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN || "";
-const SHOPIFY_TOKEN = process.env.NEXT_PUBLIC_SHOPIFY_STOREFRONT_TOKEN || "";
-const API_VERSION = "2024-10";
-const ENDPOINT = `https://${SHOPIFY_DOMAIN}/api/${API_VERSION}/graphql.json`;
+// ── Environment variables ──────────────────────────────────────
 
-// ── Types for Shopify API responses ──────────────────────────
+const SHOPIFY_SHOP = process.env.SHOPIFY_SHOP || process.env.NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN || "";
+const SHOPIFY_CLIENT_ID = process.env.SHOPIFY_CLIENT_ID || "";
+const SHOPIFY_CLIENT_SECRET = process.env.SHOPIFY_CLIENT_SECRET || "";
+const SHOPIFY_STOREFRONT_TOKEN = process.env.SHOPIFY_STOREFRONT_TOKEN || process.env.NEXT_PUBLIC_SHOPIFY_STOREFRONT_TOKEN || "";
+
+const ADMIN_API_VERSION = "2025-01";
+const STOREFRONT_API_VERSION = "2024-10";
+
+// ── Auth mode detection ────────────────────────────────────────
+
+type AuthMode = "client-credentials" | "storefront-token" | "none";
+
+function getAuthMode(): AuthMode {
+  if (SHOPIFY_SHOP && SHOPIFY_CLIENT_ID && SHOPIFY_CLIENT_SECRET) {
+    return "client-credentials";
+  }
+  if (SHOPIFY_SHOP && SHOPIFY_STOREFRONT_TOKEN) {
+    return "storefront-token";
+  }
+  return "none";
+}
+
+// ── Token caching for client credentials grant ────────────────
+
+interface CachedToken {
+  accessToken: string;
+  scope: string;
+  expiresAt: number; // Unix timestamp in ms
+}
+
+let tokenCache: CachedToken | null = null;
+
+/**
+ * Get an Admin API access token using the client credentials grant.
+ * Tokens are cached and auto-refreshed 5 minutes before expiration.
+ * Follows the pattern from:
+ * https://shopify.dev/docs/apps/build/dev-dashboard/get-api-access-tokens
+ */
+async function getAccessToken(): Promise<string> {
+  // Return cached token if still valid (with 5-minute buffer)
+  if (tokenCache && tokenCache.expiresAt > Date.now() + 5 * 60 * 1000) {
+    return tokenCache.accessToken;
+  }
+
+  const shopDomain = SHOPIFY_SHOP.includes(".myshopify.com")
+    ? SHOPIFY_SHOP
+    : `${SHOPIFY_SHOP}.myshopify.com`;
+
+  const tokenUrl = `https://${shopDomain}/admin/oauth/access_token`;
+
+  const response = await fetch(tokenUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      client_id: SHOPIFY_CLIENT_ID,
+      client_secret: SHOPIFY_CLIENT_SECRET,
+      grant_type: "client_credentials",
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `Shopify token request failed (${response.status}): ${errorText}`
+    );
+  }
+
+  const data = await response.json();
+
+  if (!data.access_token) {
+    throw new Error("No access_token in Shopify response");
+  }
+
+  // Cache the token (expires_in is in seconds, typically 86399 = ~24h)
+  tokenCache = {
+    accessToken: data.access_token,
+    scope: data.scope || "",
+    expiresAt: Date.now() + (data.expires_in || 86400) * 1000,
+  };
+
+  console.log(
+    `[Shopify] Got access token via client credentials grant. Scope: ${data.scope}. Expires in: ${Math.round(data.expires_in / 3600)}h`
+  );
+
+  return tokenCache.accessToken;
+}
+
+// ── Storefront Access Token discovery via Admin API ────────────
+
+let storefrontTokenCache: string | null = null;
+
+/**
+ * Use the Admin API to find (or create) a Storefront API access token.
+ * This is needed for cart/checkout operations which require the Storefront API.
+ */
+async function getStorefrontAccessToken(): Promise<string> {
+  if (storefrontTokenCache) return storefrontTokenCache;
+
+  const accessToken = await getAccessToken();
+  const shopDomain = SHOPIFY_SHOP.includes(".myshopify.com")
+    ? SHOPIFY_SHOP
+    : `${SHOPIFY_SHOP}.myshopify.com`;
+
+  // First, list existing Storefront Access Tokens
+  const listQuery = `
+    query {
+      storefrontAccessTokens(first: 10) {
+        edges {
+          node {
+            id
+            accessToken
+            title
+          }
+        }
+      }
+    }
+  `;
+
+  const response = await fetch(
+    `https://${shopDomain}/admin/api/${ADMIN_API_VERSION}/graphql.json`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Shopify-Access-Token": accessToken,
+      },
+      body: JSON.stringify({ query: listQuery }),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`Admin API error: ${response.status}`);
+  }
+
+  const result = await response.json();
+
+  if (result.errors) {
+    throw new Error(`Admin API GraphQL errors: ${result.errors.map((e: { message: string }) => e.message).join(", ")}`);
+  }
+
+  const tokens = result.data?.storefrontAccessTokens?.edges || [];
+
+  // Find a suitable token
+  if (tokens.length > 0) {
+    // Use the first available token
+    storefrontTokenCache = tokens[0].node.accessToken;
+    console.log(`[Shopify] Found existing Storefront Access Token: "${tokens[0].node.title}"`);
+    return storefrontTokenCache!;
+  }
+
+  // No token exists, create one
+  const createMutation = `
+    mutation {
+      storefrontAccessTokenCreate(input: { title: "CENPOD Headless Storefront" }) {
+        storefrontAccessToken {
+          id
+          accessToken
+          title
+        }
+        userErrors {
+          field
+          message
+        }
+      }
+    }
+  `;
+
+  const createResponse = await fetch(
+    `https://${shopDomain}/admin/api/${ADMIN_API_VERSION}/graphql.json`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Shopify-Access-Token": accessToken,
+      },
+      body: JSON.stringify({ query: createMutation }),
+    }
+  );
+
+  if (!createResponse.ok) {
+    throw new Error(`Admin API error creating token: ${createResponse.status}`);
+  }
+
+  const createResult = await createResponse.json();
+
+  if (createResult.data?.storefrontAccessTokenCreate?.userErrors?.length > 0) {
+    throw new Error(
+      `Storefront token creation errors: ${createResult.data.storefrontAccessTokenCreate.userErrors.map((e: { message: string }) => e.message).join(", ")}`
+    );
+  }
+
+  storefrontTokenCache = createResult.data.storefrontAccessTokenCreate.storefrontAccessToken.accessToken;
+  console.log("[Shopify] Created new Storefront Access Token: 'CENPOD Headless Storefront'");
+  return storefrontTokenCache!;
+}
+
+// ── GraphQL fetch helpers ──────────────────────────────────────
+
+interface GraphQLResponse<T> {
+  data?: T;
+  errors?: { message: string; extensions?: Record<string, unknown> }[];
+}
+
+/**
+ * Fetch from the Shopify Admin API using client credentials grant.
+ */
+async function adminFetch<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
+  const accessToken = await getAccessToken();
+  const shopDomain = SHOPIFY_SHOP.includes(".myshopify.com")
+    ? SHOPIFY_SHOP
+    : `${SHOPIFY_SHOP}.myshopify.com`;
+
+  const endpoint = `https://${shopDomain}/admin/api/${ADMIN_API_VERSION}/graphql.json`;
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Shopify-Access-Token": accessToken,
+    },
+    body: JSON.stringify({ query, variables }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Shopify Admin API error: ${response.status} ${response.statusText}`);
+  }
+
+  const json: GraphQLResponse<T> = await response.json();
+
+  if (json.errors && json.errors.length > 0) {
+    const messages = json.errors.map((e) => e.message).join(", ");
+    throw new Error(`Shopify Admin GraphQL errors: ${messages}`);
+  }
+
+  return json.data as T;
+}
+
+/**
+ * Fetch from the Shopify Storefront API.
+ * Works with both auth modes:
+ * - client-credentials: automatically discovers/creates a Storefront Access Token
+ * - storefront-token: uses the directly provided token
+ */
+async function storefrontFetch<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
+  const shopDomain = SHOPIFY_SHOP.includes(".myshopify.com")
+    ? SHOPIFY_SHOP
+    : `${SHOPIFY_SHOP}.myshopify.com`;
+
+  let token: string;
+
+  if (getAuthMode() === "client-credentials") {
+    // Get Storefront token via Admin API
+    token = await getStorefrontAccessToken();
+  } else {
+    token = SHOPIFY_STOREFRONT_TOKEN;
+  }
+
+  const endpoint = `https://${shopDomain}/api/${STOREFRONT_API_VERSION}/graphql.json`;
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Shopify-Storefront-Access-Token": token,
+    },
+    body: JSON.stringify({ query, variables }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Shopify Storefront API error: ${response.status} ${response.statusText}`);
+  }
+
+  const json: GraphQLResponse<T> = await response.json();
+
+  if (json.errors && json.errors.length > 0) {
+    const messages = json.errors.map((e) => e.message).join(", ");
+    throw new Error(`Shopify Storefront GraphQL errors: ${messages}`);
+  }
+
+  return json.data as T;
+}
+
+// ── Types for Shopify API responses ────────────────────────────
 
 interface ShopifyImage {
   id: string;
@@ -98,12 +388,7 @@ interface ShopifyCart {
   };
 }
 
-interface GraphQLResponse<T> {
-  data?: T;
-  errors?: { message: string; extensions?: Record<string, unknown> }[];
-}
-
-// ── Shopify sort keys mapping ────────────────────────────────
+// ── Shopify sort keys mapping ─────────────────────────────────
 
 type ShopifySortKey =
   | "BEST_SELLING"
@@ -112,8 +397,6 @@ type ShopifySortKey =
   | "CREATED_AT"
   | "COLLECTION_DEFAULT"
   | "RELEVANCE";
-
-type ShopifySortDirection = "ASC" | "DESC";
 
 interface SortMapping {
   key: ShopifySortKey;
@@ -138,39 +421,7 @@ function mapSortToShopify(sort: string): SortMapping {
   }
 }
 
-// ── Core GraphQL fetch helper ────────────────────────────────
-
-async function shopifyFetch<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
-  if (!SHOPIFY_DOMAIN || !SHOPIFY_TOKEN) {
-    throw new Error(
-      "Shopify configuration missing. Set NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN and NEXT_PUBLIC_SHOPIFY_STOREFRONT_TOKEN in .env.local"
-    );
-  }
-
-  const response = await fetch(ENDPOINT, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Shopify-Storefront-Access-Token": SHOPIFY_TOKEN,
-    },
-    body: JSON.stringify({ query, variables }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Shopify API error: ${response.status} ${response.statusText}`);
-  }
-
-  const json: GraphQLResponse<T> = await response.json();
-
-  if (json.errors && json.errors.length > 0) {
-    const messages = json.errors.map((e) => e.message).join(", ");
-    throw new Error(`Shopify GraphQL errors: ${messages}`);
-  }
-
-  return json.data as T;
-}
-
-// ── GraphQL query fragments ──────────────────────────────────
+// ── GraphQL query fragments ────────────────────────────────────
 
 const IMAGE_FRAGMENT = `
   id
@@ -210,17 +461,15 @@ const PRODUCT_FRAGMENT = `
   collections(first: 5) { edges { node { id handle title } } }
 `;
 
-// ── Mapper: Shopify product → our Product type ───────────────
+// ── Mapper: Shopify product → our Product type ────────────────
 
 function mapShopifyProduct(sp: ShopifyProduct): Product {
   const firstVariant = sp.variants.edges[0]?.node;
   const images = sp.images.edges.map((edge) => edge.node.url);
   const collections = sp.collections.edges.map((edge) => edge.node);
 
-  // Derive category from first collection
   const primaryCollection = collections[0] || null;
 
-  // Derive flags from tags
   const isProfessional = sp.tags.some(
     (t) => t.toLowerCase() === "professional"
   );
@@ -228,13 +477,11 @@ function mapShopifyProduct(sp: ShopifyProduct): Product {
     (t) => t.toLowerCase() === "featured"
   );
 
-  // Derive usage from tags
   let usage = "general";
   if (isProfessional) {
     usage = "professional";
   }
 
-  // Build variants JSON
   const variants = sp.variants.edges.map((edge) => ({
     id: edge.node.id,
     title: edge.node.title,
@@ -290,7 +537,7 @@ function mapShopifyProduct(sp: ShopifyProduct): Product {
   };
 }
 
-// ── Mapper: Shopify collection → our Category type ───────────
+// ── Mapper: Shopify collection → our Category type ────────────
 
 function mapShopifyCollection(sc: ShopifyCollection, index: number): Category {
   return {
@@ -330,7 +577,98 @@ interface GetProductsResult {
 }
 
 /**
- * Fetch products from Shopify Storefront API with filtering, sorting, and pagination.
+ * Check if Shopify is configured and available.
+ */
+export function isShopifyConfigured(): boolean {
+  return getAuthMode() !== "none";
+}
+
+/**
+ * Get the current auth mode for debugging/display.
+ */
+export function getShopifyAuthMode(): string {
+  return getAuthMode();
+}
+
+/**
+ * Test the Shopify connection and return diagnostic info.
+ */
+export async function testShopifyConnection(): Promise<{
+  connected: boolean;
+  authMode: string;
+  shop?: string;
+  error?: string;
+  tokenScope?: string;
+}> {
+  const mode = getAuthMode();
+
+  if (mode === "none") {
+    return {
+      connected: false,
+      authMode: "none",
+      error: "No Shopify credentials configured. Set SHOPIFY_SHOP + SHOPIFY_CLIENT_ID + SHOPIFY_CLIENT_SECRET (Dev Dashboard) or SHOPIFY_SHOP + SHOPIFY_STOREFRONT_TOKEN (legacy).",
+    };
+  }
+
+  try {
+    if (mode === "client-credentials") {
+      const token = await getAccessToken();
+      const shopDomain = SHOPIFY_SHOP.includes(".myshopify.com")
+        ? SHOPIFY_SHOP
+        : `${SHOPIFY_SHOP}.myshopify.com`;
+
+      // Test with a simple products query
+      const data = await adminFetch<{
+        products: { totalCount: number };
+      }>(`
+        query {
+          products(first: 1) {
+            totalCount
+          }
+        }
+      `);
+
+      return {
+        connected: true,
+        authMode: "client-credentials",
+        shop: shopDomain,
+        tokenScope: tokenCache?.scope,
+      };
+    }
+
+    // Legacy storefront token mode
+    const shopDomain = SHOPIFY_SHOP.includes(".myshopify.com")
+      ? SHOPIFY_SHOP
+      : `${SHOPIFY_SHOP}.myshopify.com`;
+
+    const data = await storefrontFetch<{
+      products: { totalCount: number };
+    }>(`
+      query {
+        products(first: 1) {
+          totalCount
+        }
+      }
+    `);
+
+    return {
+      connected: true,
+      authMode: "storefront-token",
+      shop: shopDomain,
+    };
+  } catch (error) {
+    return {
+      connected: false,
+      authMode: mode,
+      shop: SHOPIFY_SHOP,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+/**
+ * Fetch products from Shopify with filtering, sorting, and pagination.
+ * Uses the Storefront API for product browsing (works with both auth modes).
  */
 export async function shopifyGetProducts(
   params: GetProductsParams = {}
@@ -357,7 +695,6 @@ export async function shopifyGetProducts(
   if (professional) allTags.push("professional");
 
   if (collectionHandle) {
-    // Query products within a specific collection
     const collectionQuery = `
       query CollectionProducts($handle: String!, $first: Int!, $after: String, $sortKey: ProductCollectionSortKeys!, $reverse: Boolean!, $query: String) {
         collection(handle: $handle) {
@@ -370,17 +707,14 @@ export async function shopifyGetProducts(
       }
     `;
 
-    // Build product query string for tag filtering within collection
     const queryStringParts: string[] = [];
     if (query) queryStringParts.push(query);
     allTags.forEach((tag) => queryStringParts.push(`tag:${tag}`));
     const queryString = queryStringParts.length > 0 ? queryStringParts.join(" AND ") : undefined;
 
-    // For collection queries, we need to handle pagination differently
-    // Fetch enough products for the current page plus filtering
     const fetchLimit = Math.min(limit * 3, 250);
 
-    const data = await shopifyFetch<{
+    const data = await storefrontFetch<{
       collection: {
         products: {
           totalCount: number;
@@ -403,7 +737,6 @@ export async function shopifyGetProducts(
       mapShopifyProduct(e.node)
     );
 
-    // Client-side price filtering (Shopify doesn't support price filter in Storefront API)
     if (minPrice > 0 || maxPrice < 999999) {
       products = products.filter(
         (p) => p.price >= minPrice && p.price <= maxPrice
@@ -432,16 +765,14 @@ export async function shopifyGetProducts(
     }
   `;
 
-  // Build Shopify query string
   const queryStringParts: string[] = [];
   if (query) queryStringParts.push(query);
   allTags.forEach((tag) => queryStringParts.push(`tag:${tag}`));
   const queryString = queryStringParts.length > 0 ? queryStringParts.join(" AND ") : undefined;
 
-  // Fetch enough to allow for client-side price filtering
   const fetchLimit = Math.min(limit * 3, 250);
 
-  const data = await shopifyFetch<{
+  const data = await storefrontFetch<{
     products: {
       totalCount: number;
       edges: { cursor: string; node: ShopifyProduct }[];
@@ -455,7 +786,6 @@ export async function shopifyGetProducts(
 
   let products = data.products.edges.map((e) => mapShopifyProduct(e.node));
 
-  // Client-side price filtering
   if (minPrice > 0 || maxPrice < 999999) {
     products = products.filter(
       (p) => p.price >= minPrice && p.price <= maxPrice
@@ -487,7 +817,7 @@ export async function shopifyGetProductByHandle(
     }
   `;
 
-  const data = await shopifyFetch<{
+  const data = await storefrontFetch<{
     product: ShopifyProduct | null;
   }>(query, { handle });
 
@@ -517,7 +847,7 @@ export async function shopifyGetCollections(): Promise<Category[]> {
     }
   `;
 
-  const data = await shopifyFetch<{
+  const data = await storefrontFetch<{
     collections: {
       edges: { node: ShopifyCollection }[];
     };
@@ -550,7 +880,7 @@ export async function shopifySearchProducts(
     }
   `;
 
-  const data = await shopifyFetch<{
+  const data = await storefrontFetch<{
     products: {
       totalCount: number;
       edges: { node: ShopifyProduct }[];
@@ -567,7 +897,6 @@ export async function shopifySearchProducts(
 
 /**
  * Create a Shopify Cart with line items.
- * Uses the modern Cart API instead of the deprecated Checkout API.
  */
 export async function shopifyCreateCart(
   lineItems: { variantId: string; quantity: number }[]
@@ -607,13 +936,12 @@ export async function shopifyCreateCart(
     }
   `;
 
-  // Map lineItems to the CartLineInput format
   const cartLines = lineItems.map((item) => ({
     merchandiseId: item.variantId,
     quantity: item.quantity,
   }));
 
-  const data = await shopifyFetch<{
+  const data = await storefrontFetch<{
     cartCreate: {
       cart: ShopifyCart | null;
       userErrors: { code: string; field: string[]; message: string }[];
@@ -642,7 +970,6 @@ export async function shopifyCreateCart(
 
 /**
  * Get cart status by ID.
- * Uses the modern Cart API instead of the deprecated Checkout API.
  */
 export async function shopifyGetCart(
   cartId: string
@@ -684,7 +1011,7 @@ export async function shopifyGetCart(
     }
   `;
 
-  const data = await shopifyFetch<{
+  const data = await storefrontFetch<{
     cart: ShopifyCart | null;
   }>(query, { id: cartId });
 
@@ -709,7 +1036,7 @@ export async function shopifyGetCart(
 }
 
 /**
- * Get products by collection handle (convenience function for category pages).
+ * Get products by collection handle (convenience function).
  */
 export async function shopifyGetProductsByCollection(
   collectionHandle: string,
