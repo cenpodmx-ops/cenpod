@@ -63,3 +63,25 @@ Stage Summary:
 - User needs to understand: CENPOD (Preview Panel) ≠ Shopify native store
 - Store has 5 products: 1 real (LODOAL TERBINAFINA) + 4 Shopify example products
 - 2 collections: "Página de inicio" + "Productos de ejemplo de Salud"
+
+---
+Task ID: 2
+Agent: Main
+Task: Migrate from SQLite to PostgreSQL (Neon) for Vercel deployment
+
+Work Log:
+- Updated Prisma schema provider from "sqlite" to "postgresql"
+- Updated .env with Neon PostgreSQL connection string
+- Fixed issue where .env (base) was overriding .env.local with SQLite URL
+- Ran prisma db push successfully - all 6 tables created in Neon
+- Verified products API returns Shopify data correctly
+- Verified categories API returns Shopify collections correctly
+- Verified Shopify connection status endpoint works
+- Lint passes clean
+
+Stage Summary:
+- PostgreSQL migration complete and working
+- Database: neondb on ep-orange-night-apw408au.c-7.us-east-1.aws.neon.tech
+- Tables: User, Category, Product, Order, OrderItem, WishlistItem
+- All API endpoints working with new database
+- Ready for Vercel deployment
