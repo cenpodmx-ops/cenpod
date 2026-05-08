@@ -23,7 +23,7 @@ const SHOPIFY_CLIENT_SECRET = process.env.SHOPIFY_CLIENT_SECRET || "";
 const SHOPIFY_STOREFRONT_TOKEN = process.env.SHOPIFY_STOREFRONT_TOKEN || process.env.NEXT_PUBLIC_SHOPIFY_STOREFRONT_TOKEN || "";
 
 const ADMIN_API_VERSION = "2025-01";
-const STOREFRONT_API_VERSION = "2024-10";
+const STOREFRONT_API_VERSION = "2025-01";
 
 // ── Auth mode detection ────────────────────────────────────────
 
@@ -104,13 +104,16 @@ async function getAccessToken(): Promise<string> {
   return tokenCache.accessToken;
 }
 
-// ── Storefront Access Token discovery via Admin API ────────────
+// ── Storefront Access Token discovery via Admin REST API ───────
 
 let storefrontTokenCache: string | null = null;
 
 /**
- * Use the Admin API to find (or create) a Storefront API access token.
- * This is needed for cart/checkout operations which require the Storefront API.
+ * Use the Admin REST API to find (or create) a Storefront API access token.
+ * This is needed for product browsing and cart/checkout operations via the Storefront API.
+ *
+ * Note: The GraphQL Admin API removed storefrontAccessTokens queries in 2025-01,
+ * so we use the REST API instead.
  */
 async function getStorefrontAccessToken(): Promise<string> {
   if (storefrontTokenCache) return storefrontTokenCache;
@@ -120,95 +123,54 @@ async function getStorefrontAccessToken(): Promise<string> {
     ? SHOPIFY_SHOP
     : `${SHOPIFY_SHOP}.myshopify.com`;
 
-  // First, list existing Storefront Access Tokens
-  const listQuery = `
-    query {
-      storefrontAccessTokens(first: 10) {
-        edges {
-          node {
-            id
-            accessToken
-            title
-          }
-        }
-      }
-    }
-  `;
+  // List existing Storefront Access Tokens via REST API
+  const listUrl = `https://${shopDomain}/admin/api/${ADMIN_API_VERSION}/storefront_access_tokens.json`;
 
-  const response = await fetch(
-    `https://${shopDomain}/admin/api/${ADMIN_API_VERSION}/graphql.json`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Shopify-Access-Token": accessToken,
-      },
-      body: JSON.stringify({ query: listQuery }),
-    }
-  );
+  const listResponse = await fetch(listUrl, {
+    method: "GET",
+    headers: {
+      "X-Shopify-Access-Token": accessToken,
+    },
+  });
 
-  if (!response.ok) {
-    throw new Error(`Admin API error: ${response.status}`);
+  if (!listResponse.ok) {
+    throw new Error(`Admin REST API error listing tokens: ${listResponse.status}`);
   }
 
-  const result = await response.json();
+  const listData = await listResponse.json();
+  const tokens: { id: number; access_token: string; title: string }[] =
+    listData.storefront_access_tokens || [];
 
-  if (result.errors) {
-    throw new Error(`Admin API GraphQL errors: ${result.errors.map((e: { message: string }) => e.message).join(", ")}`);
-  }
-
-  const tokens = result.data?.storefrontAccessTokens?.edges || [];
-
-  // Find a suitable token
+  // Use the first available token
   if (tokens.length > 0) {
-    // Use the first available token
-    storefrontTokenCache = tokens[0].node.accessToken;
-    console.log(`[Shopify] Found existing Storefront Access Token: "${tokens[0].node.title}"`);
+    storefrontTokenCache = tokens[0].access_token;
+    console.log(`[Shopify] Found existing Storefront Access Token: "${tokens[0].title}"`);
     return storefrontTokenCache!;
   }
 
-  // No token exists, create one
-  const createMutation = `
-    mutation {
-      storefrontAccessTokenCreate(input: { title: "CENPOD Headless Storefront" }) {
-        storefrontAccessToken {
-          id
-          accessToken
-          title
-        }
-        userErrors {
-          field
-          message
-        }
-      }
-    }
-  `;
+  // No token exists, create one via REST API
+  const createUrl = `https://${shopDomain}/admin/api/${ADMIN_API_VERSION}/storefront_access_tokens.json`;
 
-  const createResponse = await fetch(
-    `https://${shopDomain}/admin/api/${ADMIN_API_VERSION}/graphql.json`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Shopify-Access-Token": accessToken,
+  const createResponse = await fetch(createUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Shopify-Access-Token": accessToken,
+    },
+    body: JSON.stringify({
+      storefront_access_token: {
+        title: "CENPOD Headless Storefront",
       },
-      body: JSON.stringify({ query: createMutation }),
-    }
-  );
+    }),
+  });
 
   if (!createResponse.ok) {
-    throw new Error(`Admin API error creating token: ${createResponse.status}`);
+    const errorText = await createResponse.text();
+    throw new Error(`Admin REST API error creating token (${createResponse.status}): ${errorText}`);
   }
 
-  const createResult = await createResponse.json();
-
-  if (createResult.data?.storefrontAccessTokenCreate?.userErrors?.length > 0) {
-    throw new Error(
-      `Storefront token creation errors: ${createResult.data.storefrontAccessTokenCreate.userErrors.map((e: { message: string }) => e.message).join(", ")}`
-    );
-  }
-
-  storefrontTokenCache = createResult.data.storefrontAccessTokenCreate.storefrontAccessToken.accessToken;
+  const createData = await createResponse.json();
+  storefrontTokenCache = createData.storefront_access_token.access_token;
   console.log("[Shopify] Created new Storefront Access Token: 'CENPOD Headless Storefront'");
   return storefrontTokenCache!;
 }
@@ -363,7 +325,7 @@ interface ShopifyCollection {
   description: string;
   image: ShopifyImage | null;
   products: {
-    totalCount: number;
+    edges: { node: { id: string } }[];
   };
 }
 
@@ -548,7 +510,7 @@ function mapShopifyCollection(sc: ShopifyCollection, index: number): Category {
     image: sc.image?.url || null,
     icon: null,
     order: index,
-    productCount: sc.products.totalCount,
+    productCount: sc.products.edges.length,
   };
 }
 
@@ -617,13 +579,13 @@ export async function testShopifyConnection(): Promise<{
         ? SHOPIFY_SHOP
         : `${SHOPIFY_SHOP}.myshopify.com`;
 
-      // Test with a simple products query
-      const data = await adminFetch<{
-        products: { totalCount: number };
+      // Test with a simple products query via Admin API
+      await adminFetch<{
+        products: { edges: { node: { id: string } }[] };
       }>(`
         query {
           products(first: 1) {
-            totalCount
+            edges { node { id } }
           }
         }
       `);
@@ -641,12 +603,12 @@ export async function testShopifyConnection(): Promise<{
       ? SHOPIFY_SHOP
       : `${SHOPIFY_SHOP}.myshopify.com`;
 
-    const data = await storefrontFetch<{
-      products: { totalCount: number };
+    await storefrontFetch<{
+      products: { edges: { node: { id: string } }[] };
     }>(`
       query {
         products(first: 1) {
-          totalCount
+          edges { node { id } }
         }
       }
     `);
@@ -699,7 +661,6 @@ export async function shopifyGetProducts(
       query CollectionProducts($handle: String!, $first: Int!, $after: String, $sortKey: ProductCollectionSortKeys!, $reverse: Boolean!, $query: String) {
         collection(handle: $handle) {
           products(first: $first, after: $after, sortKey: $sortKey, reverse: $reverse, query: $query) {
-            totalCount
             pageInfo { hasNextPage hasPreviousPage endCursor startCursor }
             edges { cursor node { ${PRODUCT_FRAGMENT} } }
           }
@@ -717,7 +678,6 @@ export async function shopifyGetProducts(
     const data = await storefrontFetch<{
       collection: {
         products: {
-          totalCount: number;
           edges: { cursor: string; node: ShopifyProduct }[];
         };
       } | null;
@@ -758,7 +718,6 @@ export async function shopifyGetProducts(
   const productsQuery = `
     query Products($first: Int!, $after: String, $sortKey: ProductSortKeys!, $reverse: Boolean!, $query: String) {
       products(first: $first, after: $after, sortKey: $sortKey, reverse: $reverse, query: $query) {
-        totalCount
         pageInfo { hasNextPage hasPreviousPage endCursor startCursor }
         edges { cursor node { ${PRODUCT_FRAGMENT} } }
       }
@@ -774,7 +733,6 @@ export async function shopifyGetProducts(
 
   const data = await storefrontFetch<{
     products: {
-      totalCount: number;
       edges: { cursor: string; node: ShopifyProduct }[];
     };
   }>(productsQuery, {
@@ -840,7 +798,7 @@ export async function shopifyGetCollections(): Promise<Category[]> {
             title
             description
             image { ${IMAGE_FRAGMENT} }
-            products(first: 1) { totalCount }
+            products(first: 1) { edges { node { id } } }
           }
         }
       }
@@ -872,7 +830,6 @@ export async function shopifySearchProducts(
   const query = `
     query SearchProducts($query: String!, $first: Int!) {
       products(first: $first, query: $query, sortKey: RELEVANCE) {
-        totalCount
         edges {
           node { ${PRODUCT_FRAGMENT} }
         }
@@ -882,7 +839,6 @@ export async function shopifySearchProducts(
 
   const data = await storefrontFetch<{
     products: {
-      totalCount: number;
       edges: { node: ShopifyProduct }[];
     };
   }>(query, { query: q, first: limit });
@@ -891,7 +847,7 @@ export async function shopifySearchProducts(
 
   return {
     products,
-    total: data.products.totalCount,
+    total: products.length,
   };
 }
 
