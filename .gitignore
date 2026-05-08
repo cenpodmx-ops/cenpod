@@ -30,8 +30,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files - NEVER commit secrets!
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -50,5 +51,13 @@ test
 prompt
 
 server.log
+worklog.md
+upload/
+agent-ctx/
+.zscripts/
+examples/
+mini-services/
+download/
+Caddyfile
 # Skills directory
 /skills/
