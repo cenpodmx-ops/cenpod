@@ -494,8 +494,15 @@ export default function CheckoutPage() {
     setIsSubmitting(true);
     setCheckoutError(null);
     try {
+      // Refresh variant IDs before checkout to ensure they're current
+      const { refreshVariantIds } = useCartStore.getState();
+      await refreshVariantIds();
+
+      // Re-read items from store after refresh
+      const freshItems = useCartStore.getState().items;
+
       // Build Shopify line items from cart
-      const lineItems = items
+      const lineItems = freshItems
         .filter((item) => item.variantId) // Only items with Shopify variant IDs
         .map((item) => ({
           variantId: item.variantId!,
@@ -528,7 +535,7 @@ export default function CheckoutPage() {
               state: shippingData.state,
             },
             paymentMethod: "local",
-            items: items.map((item) => ({
+            items: freshItems.map((item) => ({
               name: item.name,
               price: item.price,
               quantity: item.quantity,
@@ -556,15 +563,36 @@ export default function CheckoutPage() {
       }
 
       // Create Shopify checkout
-      const checkoutResponse = await fetch("/api/checkout", {
+      let checkoutResponse = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ lineItems }),
       });
 
       if (!checkoutResponse.ok) {
-        const errData = await checkoutResponse.json().catch(() => ({}));
-        throw new Error(errData.error || "Error al crear el checkout de Shopify");
+        // Variant IDs might be stale — refresh and retry
+        const updated = await refreshVariantIds();
+        if (updated > 0) {
+          const retryItems = useCartStore.getState().items
+            .filter((item) => item.variantId)
+            .map((item) => ({
+              variantId: item.variantId!,
+              quantity: item.quantity,
+            }));
+
+          if (retryItems.length > 0) {
+            checkoutResponse = await fetch("/api/checkout", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ lineItems: retryItems }),
+            });
+          }
+        }
+
+        if (!checkoutResponse.ok) {
+          const errData = await checkoutResponse.json().catch(() => ({}));
+          throw new Error(errData.error || "Error al crear el checkout de Shopify. Intenta vaciar el carrito y agregar los productos de nuevo.");
+        }
       }
 
       const checkout = await checkoutResponse.json();
@@ -599,7 +627,7 @@ export default function CheckoutPage() {
           },
           paymentMethod: "shopify",
           paymentId: checkout.id,
-          items: items.map((item) => ({
+          items: freshItems.map((item) => ({
             name: item.name,
             price: item.price,
             quantity: item.quantity,

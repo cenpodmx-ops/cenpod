@@ -67,11 +67,15 @@ export function CartDrawer() {
       }
     } catch (error) {
       console.error("Checkout error:", error);
-      setCartError(
-        error instanceof Error
-          ? error.message
-          : "Error al procesar. Intenta ir al checkout manualmente."
-      );
+      const errorMsg = error instanceof Error ? error.message : "Error al procesar";
+      // Check if it's a variant ID error and provide a helpful message
+      if (errorMsg.includes("no existe") || errorMsg.includes("Cart creation errors")) {
+        setCartError(
+          "Los productos en tu carrito necesitan actualizarse. Intenta vaciar el carrito y agregar los productos de nuevo, o contacta soporte."
+        );
+      } else {
+        setCartError(errorMsg);
+      }
     } finally {
       setIsCheckingOut(false);
     }
@@ -283,6 +287,14 @@ export function CartDrawer() {
                       <AlertTriangle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
                       <div className="flex-1">
                         <p className="text-xs text-red-700">{cartError}</p>
+                        {(cartError.includes("actualizarse") || cartError.includes("no existe")) && (
+                          <button
+                            onClick={() => { clearCart(); setCartError(null); }}
+                            className="mt-1.5 text-xs font-medium text-red-700 underline hover:text-red-900 transition-colors"
+                          >
+                            Vaciar carrito y empezar de nuevo
+                          </button>
+                        )}
                       </div>
                       <button
                         onClick={() => setCartError(null)}

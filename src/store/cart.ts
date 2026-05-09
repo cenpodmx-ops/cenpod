@@ -44,6 +44,7 @@ interface CartActions {
   setShopifyCartId: (id: string | null) => void;
   syncWithShopify: () => Promise<void>;
   getCheckoutUrl: () => Promise<string>;
+  refreshVariantIds: () => Promise<number>; // Returns number of updated items
 }
 
 const FREE_SHIPPING_THRESHOLD = 1000;
@@ -236,7 +237,60 @@ export const useCartStore = create<CartState & CartActions>()(
         }
       },
 
+      /**
+       * Refresh variant IDs for all cart items by fetching latest product data.
+       * Returns the number of items that were updated.
+       */
+      refreshVariantIds: async () => {
+        const { items } = get();
+        let updatedCount = 0;
+        const updatedItems = [...items];
+
+        // Fetch latest variant IDs for each product
+        for (let i = 0; i < updatedItems.length; i++) {
+          const item = updatedItems[i];
+          try {
+            const res = await fetch(`/api/products/${item.slug}`);
+            if (res.ok) {
+              const product = await res.json();
+              try {
+                const variants = JSON.parse(product.variants || "[]");
+                const latestVariantId = variants[0]?.id;
+                if (latestVariantId && latestVariantId !== item.variantId) {
+                  updatedItems[i] = {
+                    ...item,
+                    variantId: latestVariantId,
+                    price: product.price !== item.price ? product.price : item.price,
+                    name: product.name || item.name,
+                    image: (JSON.parse(product.images || "[]")[0]) || item.image,
+                    maxStock: product.stock !== undefined ? product.stock : item.maxStock,
+                  };
+                  updatedCount++;
+                }
+              } catch {
+                // Failed to parse variants, skip
+              }
+            }
+          } catch {
+            // Failed to fetch product, skip
+          }
+        }
+
+        if (updatedCount > 0) {
+          set({
+            items: updatedItems,
+            shopifyCartId: null, // Invalidate since variants changed
+            shopifyCheckoutUrl: null,
+          });
+        }
+
+        return updatedCount;
+      },
+
       getCheckoutUrl: async () => {
+        // Always refresh variant IDs before checkout to ensure they're current
+        await get().refreshVariantIds();
+
         const { items, shopifyCartId, shopifyCheckoutUrl } = get();
 
         const lineItems = items
@@ -272,14 +326,41 @@ export const useCartStore = create<CartState & CartActions>()(
         }
 
         // No valid Shopify cart — create one with all items
-        const res = await fetch("/api/cart", {
+        // If it fails, try once more after refreshing variant IDs
+        let res = await fetch("/api/cart", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "create", lineItems }),
         });
 
         if (!res.ok) {
-          throw new Error("Error al crear el carrito de Shopify");
+          // First attempt failed — refresh variant IDs and retry once
+          const updated = await get().refreshVariantIds();
+          if (updated > 0) {
+            // Rebuild line items with fresh variant IDs
+            const freshLineItems = get().items
+              .filter((item) => item.variantId)
+              .map((item) => ({
+                variantId: item.variantId!,
+                quantity: item.quantity,
+              }));
+
+            if (freshLineItems.length === 0) {
+              throw new Error("No se pudieron obtener las variantes de los productos. Intenta vaciar el carrito y agregar los productos de nuevo.");
+            }
+
+            res = await fetch("/api/cart", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "create", lineItems: freshLineItems }),
+            });
+          }
+
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            const msg = errData.error || "Error al crear el carrito de Shopify";
+            throw new Error(msg);
+          }
         }
 
         const data = await res.json();
