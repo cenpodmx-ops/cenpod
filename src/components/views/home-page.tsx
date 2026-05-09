@@ -199,9 +199,9 @@ function ProductCard({ product, index }: { product: Product; index: number }) {
 
 // ─── Hero Tagline Phrases ──────────────────────────────────────────────────────
 const taglinePhrases = [
-  { text: "Instrumentos Quirúrgicos", icon: Microscope },
+  { text: "Cuidado de Pies", icon: Microscope },
   { text: "Insumos Profesionales", icon: Pill },
-  { text: "Equipamiento Clínico", icon: ClipboardCheck },
+  { text: "Salud y Bienestar", icon: ClipboardCheck },
 ];
 
 // ─── Hero Section ──────────────────────────────────────────────────────────────
@@ -288,7 +288,7 @@ function HeroSection({ navigate }: { navigate: (view: "catalog", params?: Record
           <img
             src="/images/logo-white.png"
             alt="CENPOD"
-            className="h-14 md:h-[60px] w-auto drop-shadow-lg"
+            className="h-24 md:h-[100px] w-auto drop-shadow-lg"
           />
         </motion.div>
 
@@ -337,7 +337,7 @@ function HeroSection({ navigate }: { navigate: (view: "catalog", params?: Record
           transition={{ duration: 0.7, delay: 0.5 }}
           className="text-white/60 text-base md:text-lg max-w-xl mx-auto mb-10 leading-relaxed"
         >
-          Todo lo que necesitas para tu consultorio. Instrumentos, insumos y
+          Todo lo que necesitas para el cuidado de tus pies. Instrumentos, insumos y
           equipamiento de la más alta calidad profesional.
         </motion.p>
 
@@ -385,7 +385,7 @@ function HeroSection({ navigate }: { navigate: (view: "catalog", params?: Record
         >
           <div className="flex items-center gap-1.5">
             <ShieldCheck className="w-4 h-4" />
-            <span>Certificados</span>
+            <span>Calidad garantizada</span>
           </div>
           <div className="flex items-center gap-1.5">
             <Truck className="w-4 h-4" />
@@ -393,7 +393,7 @@ function HeroSection({ navigate }: { navigate: (view: "catalog", params?: Record
           </div>
           <div className="flex items-center gap-1.5">
             <Headset className="w-4 h-4" />
-            <span>Asesoría experta</span>
+            <span>Asesoría especializada</span>
           </div>
         </motion.div>
       </div>
@@ -457,7 +457,7 @@ export default function HomePage() {
               },
               {
                 icon: <ShieldCheck className="w-5 h-5 text-navy" />,
-                label: "Productos certificados",
+                label: "Productos de calidad",
               },
               {
                 icon: <Headset className="w-5 h-5 text-navy" />,
@@ -581,7 +581,7 @@ function CategoriesSection({
             Explora por categoría
           </h2>
           <p className="text-gray-dark text-sm md:text-base">
-            Encuentra todo lo que necesitas organizado por tipo de producto
+            Encuentra todo lo que necesitas para el cuidado de tus pies
           </p>
         </motion.div>
 
@@ -672,7 +672,7 @@ function FeaturedProductsSection({
             Los más elegidos
           </h2>
           <p className="text-gray-dark text-sm md:text-base">
-            Los productos favoritos de nuestros clientes profesionales
+            Los productos favoritos de nuestros clientes
           </p>
         </motion.div>
 
@@ -714,10 +714,10 @@ function ProfessionalSection({
   const isInView = useInView(ref, { once: true, margin: "-100px" });
 
   const benefits = [
-    "Instrumentos de grado quirúrgico con certificación",
-    "Equipamiento diseñado para uso clínico intensivo",
-    "Insumos con normas de sanitización internacionales",
-    "Asesoría técnica especializada para tu consultorio",
+    "Productos con la más alta calidad y certificación",
+    "Instrumental para uso profesional y doméstico",
+    "Insumos con normas de calidad internacionales",
+    "Asesoría especializada para el cuidado de tus pies",
   ];
 
   return (
@@ -735,13 +735,12 @@ function ProfessionalSection({
             </Badge>
 
             <h2 className="font-heading text-3xl md:text-4xl text-white font-bold mb-4 leading-tight">
-              Equipamiento profesional para tu consultorio
+              Productos profesionales y de uso diario
             </h2>
 
             <p className="text-navy-200 mb-8 text-sm md:text-base leading-relaxed">
-              Nuestra línea profesional está diseñada específicamente para
-              podólogos que exigen la máxima calidad y durabilidad en cada
-              instrumento y equipo.
+              Desde productos de uso diario hasta instrumental profesional, tenemos
+              todo para el cuidado de tus pies.
             </p>
 
             <ul className="space-y-3 mb-8">
@@ -768,7 +767,7 @@ function ProfessionalSection({
               }
               className="h-11 px-8 bg-white text-navy font-semibold rounded-lg hover:bg-gray-100 transition-colors"
             >
-              Ver línea profesional
+              Ver productos especializados
               <ArrowRight className="ml-2 w-4 h-4" />
             </Button>
           </motion.div>

@@ -169,3 +169,29 @@ Stage Summary:
 - All other sections (trust bar, categories, featured products, professional, newsletter) unchanged
 - CSS animations use keyframes for performance (no heavy JS animation loops)
 - All existing responsive approach maintained
+
+---
+Task ID: 3
+Agent: Main Agent
+Task: Bigger logos, fix messaging (foot care for everyone), connect checkout to Shopify
+
+Work Log:
+- **CHANGE 1: Hero logo bigger**: Changed hero banner logo from `h-14 md:h-[60px]` to `h-24 md:h-[100px]` in home-page.tsx
+- **CHANGE 2: Header logo bigger**: Changed both header logo images from `h-10` to `h-14` in header.tsx
+- **CHANGE 3: Messaging fixes across 3 files**:
+  - home-page.tsx: Updated hero subtitle ("cuidado de tus pies"), trust bar ("Productos de calidad"), categories subtitle, featured products subtitle, professional section (heading, description, 4 benefits, CTA button), animated taglines ("Cuidado de Pies", "Salud y Bienestar"), trust indicators ("Calidad garantizada", "Asesoría especializada")
+  - header.tsx: Changed top bar from "Equipo profesional para podólogos" to "Productos para el cuidado de tus pies"
+  - footer.tsx: Changed description from "productos y equipamiento podológico profesional" to "productos de cuidado de pies. Para profesionales y público en general."
+- **CHANGE 4: Shopify checkout**: Updated cart-drawer.tsx to create Shopify cart via /api/checkout and redirect to Shopify checkout URL
+  - Added `useState` import and `isCheckingOut` state
+  - `handleCheckout` now async: builds lineItems from cart, POSTs to /api/checkout, redirects to checkout.webUrl
+  - Falls back to local checkout on error or missing variantIds
+  - Button shows "Procesando..." when loading and is disabled
+- Ran `bun run lint` — passes clean with no errors
+- Dev server compiling and running successfully
+
+Stage Summary:
+- Hero logo is now ~100px tall (was ~60px), header logo is h-14 (was h-10)
+- All messaging shifted from "professional podiatrists" to "foot care for everyone"
+- Checkout button now creates a real Shopify cart and redirects to Shopify checkout
+- Fallback to local checkout if Shopify is unavailable or items lack variantIds

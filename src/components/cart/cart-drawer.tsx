@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { useCartStore } from "@/store/cart";
@@ -35,9 +36,45 @@ export function CartDrawer() {
   const itemCount = getItemCount();
   const shippingProgress = getShippingProgress();
 
-  const handleCheckout = () => {
-    closeCart();
-    navigate("checkout");
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
+
+  const handleCheckout = async () => {
+    // Build line items from cart
+    const lineItems = items
+      .filter((item) => item.variantId)
+      .map((item) => ({
+        variantId: item.variantId!,
+        quantity: item.quantity,
+      }));
+
+    if (lineItems.length === 0) {
+      // No Shopify variant IDs, go to local checkout as fallback
+      closeCart();
+      navigate("checkout");
+      return;
+    }
+
+    try {
+      setIsCheckingOut(true);
+      const response = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lineItems }),
+      });
+
+      if (!response.ok) throw new Error("Error creating checkout");
+
+      const checkout = await response.json();
+      // Redirect to Shopify checkout
+      window.location.href = checkout.webUrl;
+    } catch (error) {
+      console.error("Checkout error:", error);
+      // Fallback to local checkout
+      closeCart();
+      navigate("checkout");
+    } finally {
+      setIsCheckingOut(false);
+    }
   };
 
   const handleExploreProducts = () => {
@@ -243,9 +280,10 @@ export function CartDrawer() {
                   {/* Checkout Button */}
                   <button
                     onClick={handleCheckout}
-                    className="w-full h-12 bg-navy hover:bg-navy-light text-white font-semibold text-sm rounded-xl transition-colors"
+                    disabled={isCheckingOut}
+                    className="w-full h-12 bg-navy hover:bg-navy-light text-white font-semibold text-sm rounded-xl transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    Ir al checkout
+                    {isCheckingOut ? "Procesando..." : "Ir al checkout"}
                   </button>
 
                   {/* Continue Shopping */}

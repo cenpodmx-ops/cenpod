@@ -21,7 +21,7 @@ export function Footer() {
               <span className="text-navy-200 text-xs">CENTRO PODOLÓGICO</span>
             </div>
             <p className="text-navy-200 text-sm leading-relaxed">
-              Tu centro de confianza para productos y equipamiento podológico profesional. 
+              Tu centro de confianza para productos de cuidado de pies. Para profesionales y público en general.
               Calidad y servicio desde México.
             </p>
           </div>

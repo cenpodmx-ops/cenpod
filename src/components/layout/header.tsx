@@ -105,7 +105,7 @@ export function Header() {
       >
         {/* Top bar - promo with Shopify status */}
         <div className="bg-navy text-white text-xs py-1.5 flex items-center justify-center gap-2">
-          <p>Envío gratis en compras mayores a $500 MXN · Equipo profesional para podólogos</p>
+          <p>Envío gratis en compras mayores a $500 MXN · Productos para el cuidado de tus pies</p>
           <span className="hidden sm:inline-flex items-center gap-1 ml-2 px-1.5 py-0.5 rounded-full bg-white/10">
             {shopifyStatus?.connected ? (
               <><Wifi className="h-3 w-3 text-green-400" /><span className="text-green-300">Shopify</span></>
@@ -125,12 +125,12 @@ export function Header() {
               <img
                 src="/images/logo-navy.png"
                 alt="CENPOD logo"
-                className="h-10 w-auto dark:hidden"
+                className="h-14 w-auto dark:hidden"
               />
               <img
                 src="/images/logo-white.png"
                 alt="CENPOD logo"
-                className="h-10 w-auto hidden dark:block"
+                className="h-14 w-auto hidden dark:block"
               />
               <div className="hidden sm:block">
                 <h1 className="text-navy dark:text-white font-heading font-bold text-xl leading-tight">
