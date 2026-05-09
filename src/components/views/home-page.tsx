@@ -216,7 +216,7 @@ function HeroSection({ navigate }: { navigate: (view: "catalog", params?: Record
   }, []);
 
   return (
-    <section className="relative flex items-center justify-center overflow-hidden h-[100svh] md:h-[92vh]">
+    <section className="relative flex items-center justify-center overflow-hidden h-[100svh] md:h-[92vh] pb-20 md:pb-10">
       {/* Animated gradient background */}
       <div className="absolute inset-0 hero-gradient-animated" />
 
@@ -283,7 +283,7 @@ function HeroSection({ navigate }: { navigate: (view: "catalog", params?: Record
           initial={{ opacity: 0, y: -20, scale: 0.9 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
-          className="mb-6 flex justify-center"
+          className="mb-2 flex justify-center"
         >
           <img
             src="/images/logo-white.png"
@@ -297,7 +297,7 @@ function HeroSection({ navigate }: { navigate: (view: "catalog", params?: Record
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.15 }}
-          className="font-heading text-white leading-[1.1] mb-5 tracking-tight"
+          className="font-heading text-white leading-[1.1] mb-3 tracking-tight"
           style={{ fontSize: "clamp(2.8rem, 6vw, 5rem)", fontWeight: 800 }}
         >
           CENTRO PODOLÓGICO
@@ -308,7 +308,7 @@ function HeroSection({ navigate }: { navigate: (view: "catalog", params?: Record
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.35 }}
-          className="h-10 md:h-12 flex items-center justify-center mb-8"
+          className="h-10 md:h-12 flex items-center justify-center mb-4"
         >
           <AnimatePresence mode="wait">
             <motion.div
@@ -335,7 +335,7 @@ function HeroSection({ navigate }: { navigate: (view: "catalog", params?: Record
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.5 }}
-          className="text-white/60 text-base md:text-lg max-w-xl mx-auto mb-10 leading-relaxed"
+          className="text-white/60 text-base md:text-lg max-w-xl mx-auto mb-6 leading-relaxed"
         >
           Todo lo que necesitas para el cuidado de tus pies. Productos de calidad
           para toda la familia y profesionales de la podología.
@@ -381,7 +381,7 @@ function HeroSection({ navigate }: { navigate: (view: "catalog", params?: Record
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 1, delay: 1.2 }}
-          className="mt-14 flex flex-wrap items-center justify-center gap-6 md:gap-10 text-white/40 text-xs md:text-sm"
+          className="mt-6 flex flex-wrap items-center justify-center gap-6 md:gap-10 text-white/40 text-xs md:text-sm"
         >
           <div className="flex items-center gap-1.5">
             <ShieldCheck className="w-4 h-4" />
@@ -399,7 +399,7 @@ function HeroSection({ navigate }: { navigate: (view: "catalog", params?: Record
       </div>
 
       {/* Bottom gradient fade */}
-      <div className="absolute bottom-0 left-0 right-0 h-28 bg-gradient-to-t from-white to-transparent" />
+      <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white to-transparent" />
     </section>
   );
 }
