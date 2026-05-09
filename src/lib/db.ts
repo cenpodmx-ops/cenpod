@@ -4,18 +4,30 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
-// Ensure we use the Neon PostgreSQL URL, not the system DATABASE_URL (which may point to SQLite)
-const NEON_URL = 'postgresql://neondb_owner:npg_uH2OXVe4FUTQ@ep-orange-night-apw408au.c-7.us-east-1.aws.neon.tech/neondb?sslmode=require';
+// Use NEON_DATABASE_URL as primary, then DATABASE_URL if it's PostgreSQL,
+// falling back to the .env.local/.env value (which should be Neon PostgreSQL).
+// This handles the case where the system DATABASE_URL points to SQLite.
+function getDatabaseUrl(): string {
+  const neonUrl = process.env.NEON_DATABASE_URL;
+  if (neonUrl) return neonUrl;
+
+  const dbUrl = process.env.DATABASE_URL;
+  if (dbUrl && dbUrl.startsWith('postgresql://')) return dbUrl;
+
+  // Last resort: try NEXT_PUBLIC_NEON_DATABASE_URL (set in .env.local)
+  const publicNeonUrl = process.env.NEXT_PUBLIC_NEON_DATABASE_URL;
+  if (publicNeonUrl) return publicNeonUrl;
+
+  throw new Error('No valid PostgreSQL DATABASE_URL found. Set NEON_DATABASE_URL or DATABASE_URL to a PostgreSQL connection string.');
+}
 
 export const db =
   globalForPrisma.prisma ??
   new PrismaClient({
-    log: ['query'],
+    log: process.env.NODE_ENV === 'development' ? ['query'] : [],
     datasources: {
       db: {
-        url: process.env.DATABASE_URL?.startsWith('postgresql://')
-          ? process.env.DATABASE_URL
-          : NEON_URL,
+        url: getDatabaseUrl(),
       },
     },
   })
