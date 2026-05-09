@@ -324,3 +324,45 @@ Stage Summary:
 - Admin metrics API is protected with requireAdmin()
 - Admin user can be seeded in production via /api/setup/admin
 - Auth, admin protection, and order filtering were already implemented
+
+---
+Task ID: 5
+Agent: Main Agent
+Task: Fix checkout flow - "nothing happens" when clicking proceed to payment
+
+Work Log:
+- Diagnosed root cause: Shopify Storefront API 2025-01 breaking changes
+  - `Cart.totalAmount` → `Cart.cost.totalAmount` (field moved under `cost` object)
+  - `ProductVariant.priceV2` → `ProductVariant.price` (V2 suffix dropped)
+  - `ProductVariant.compareAtPriceV2` → `ProductVariant.compareAtPrice`
+- The Shopify API was returning GraphQL errors: "Field 'totalAmount' doesn't exist on type 'Cart'"
+- This caused the checkout API to return 500 errors silently (no user feedback)
+- Updated all GraphQL queries and fragments in lib/shopify.ts:
+  - VARIANT_FRAGMENT: priceV2 → price, compareAtPriceV2 → compareAtPrice
+  - CART_MUTATION_FRAGMENT: totalAmount → cost.totalAmount, added cost.subtotalAmount, priceV2 → price
+  - shopifyCreateCart mutation: updated all field references
+  - shopifyGetCart query: updated all field references
+- Updated TypeScript interfaces:
+  - ShopifyPriceV2 → ShopifyMoneyV2
+  - ShopifyVariant: priceV2 → price, compareAtPriceV2 → compareAtPrice
+  - ShopifyCartLineItem: added cost.totalAmount, priceV2 → price
+  - ShopifyCart: totalAmount → cost.totalAmount with subtotalAmount and totalTaxAmount
+- Updated mappers: mapShopifyProduct, mapShopifyCart, shopifyGetCart return
+- Added error handling to checkout page:
+  - New checkoutError state variable
+  - Error message banner with AlertTriangle icon in Step 3
+  - Parse error messages from API responses
+  - Validate checkout.webUrl exists before redirecting
+- Added error handling to CartDrawer:
+  - New cartError state variable
+  - Error message banner in cart footer
+  - No longer silently falls back on error (shows message instead)
+- Tested: POST /api/checkout now returns 201 with valid Shopify checkout URL
+- Tested: POST /api/cart with action "create" returns valid cart with checkout URL
+- Lint passes clean
+
+Stage Summary:
+- Root cause: Shopify Storefront API 2025-01 removed Cart.totalAmount and ProductVariant.priceV2
+- Fixed all GraphQL queries to use new field structure (cost.totalAmount, price instead of priceV2)
+- Added user-visible error messages to checkout page and cart drawer
+- Checkout flow now works end-to-end: products → cart → checkout → Shopify redirect

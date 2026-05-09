@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
+import { X, Minus, Plus, ShoppingBag, Trash2, AlertTriangle } from "lucide-react";
 import { useCartStore } from "@/store/cart";
 import { useNavigationStore } from "@/store/navigation";
 import { formatPrice } from "@/types";
@@ -37,9 +37,11 @@ export function CartDrawer() {
   const shippingProgress = getShippingProgress();
 
   const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [cartError, setCartError] = useState<string | null>(null);
   const getCheckoutUrl = useCartStore((s) => s.getCheckoutUrl);
 
   const handleCheckout = async () => {
+    setCartError(null);
     // Check if we have items with Shopify variant IDs
     const hasShopifyItems = items.some((item) => item.variantId);
 
@@ -65,9 +67,11 @@ export function CartDrawer() {
       }
     } catch (error) {
       console.error("Checkout error:", error);
-      // Fallback to local checkout
-      closeCart();
-      navigate("checkout");
+      setCartError(
+        error instanceof Error
+          ? error.message
+          : "Error al procesar. Intenta ir al checkout manualmente."
+      );
     } finally {
       setIsCheckingOut(false);
     }
@@ -272,6 +276,23 @@ export function CartDrawer() {
                       {formatPrice(subtotal)}
                     </span>
                   </div>
+
+                  {/* Error message */}
+                  {cartError && (
+                    <div className="mb-3 rounded-lg bg-red-50 border border-red-200 p-3 flex items-start gap-2">
+                      <AlertTriangle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-xs text-red-700">{cartError}</p>
+                      </div>
+                      <button
+                        onClick={() => setCartError(null)}
+                        className="p-0.5 rounded hover:bg-red-100 transition-colors"
+                        aria-label="Cerrar error"
+                      >
+                        <X className="h-3 w-3 text-red-400" />
+                      </button>
+                    </div>
+                  )}
 
                   {/* Checkout Button */}
                   <button

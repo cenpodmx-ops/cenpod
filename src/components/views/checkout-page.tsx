@@ -17,6 +17,8 @@ import {
   CheckCircle2,
   ShoppingBag,
   ArrowRight,
+  AlertTriangle,
+  X,
 } from "lucide-react";
 import { useCartStore } from "@/store/cart";
 import { useNavigationStore } from "@/store/navigation";
@@ -390,6 +392,7 @@ export default function CheckoutPage() {
   const [direction, setDirection] = useState(1);
   const [selectedShipping, setSelectedShipping] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [orderConfirmed, setOrderConfirmed] = useState(false);
   const [orderData, setOrderData] = useState<{
     orderNumber: string;
@@ -489,6 +492,7 @@ export default function CheckoutPage() {
   /* ──── Confirm Order ──── */
   const onPaymentSubmit = async () => {
     setIsSubmitting(true);
+    setCheckoutError(null);
     try {
       // Build Shopify line items from cart
       const lineItems = items
@@ -535,7 +539,10 @@ export default function CheckoutPage() {
           }),
         });
 
-        if (!response.ok) throw new Error("Error al crear el pedido");
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.error || "Error al crear el pedido");
+        }
         const order = await response.json();
 
         setOrderData({
@@ -555,9 +562,16 @@ export default function CheckoutPage() {
         body: JSON.stringify({ lineItems }),
       });
 
-      if (!checkoutResponse.ok) throw new Error("Error al crear el checkout");
+      if (!checkoutResponse.ok) {
+        const errData = await checkoutResponse.json().catch(() => ({}));
+        throw new Error(errData.error || "Error al crear el checkout de Shopify");
+      }
 
       const checkout = await checkoutResponse.json();
+
+      if (!checkout.webUrl) {
+        throw new Error("No se recibió la URL de checkout de Shopify");
+      }
 
       // Also create a local order for tracking
       const finalShippingCost = freeShipping ? 0 : (shippingMethod?.price ?? 0);
@@ -600,6 +614,11 @@ export default function CheckoutPage() {
       window.location.href = checkout.webUrl;
     } catch (error) {
       console.error("Order error:", error);
+      setCheckoutError(
+        error instanceof Error
+          ? error.message
+          : "Ocurrió un error inesperado. Intenta de nuevo."
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -1103,6 +1122,24 @@ export default function CheckoutPage() {
                         </div>
                       </div>
                     </div>
+
+                    {/* Error message */}
+                    {checkoutError && (
+                      <div className="mt-4 rounded-xl bg-red-50 border border-red-200 p-4 flex items-start gap-3">
+                        <AlertTriangle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-red-800">Error al procesar el pago</p>
+                          <p className="text-sm text-red-600 mt-0.5">{checkoutError}</p>
+                        </div>
+                        <button
+                          onClick={() => setCheckoutError(null)}
+                          className="ml-auto p-1 rounded-md hover:bg-red-100 transition-colors"
+                          aria-label="Cerrar error"
+                        >
+                          <X className="h-4 w-4 text-red-400" />
+                        </button>
+                      </div>
+                    )}
 
                     <div className="mt-6 flex gap-3">
                       <Button

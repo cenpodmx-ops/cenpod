@@ -271,7 +271,7 @@ interface ShopifyImage {
   height: number;
 }
 
-interface ShopifyPriceV2 {
+interface ShopifyMoneyV2 {
   amount: string;
   currencyCode: string;
 }
@@ -280,8 +280,8 @@ interface ShopifyVariant {
   id: string;
   title: string;
   sku: string | null;
-  priceV2: ShopifyPriceV2;
-  compareAtPriceV2: ShopifyPriceV2 | null;
+  price: ShopifyMoneyV2;
+  compareAtPrice: ShopifyMoneyV2 | null;
   quantityAvailable: number | null;
   weight: number | null;
   weightUnit: string;
@@ -332,17 +332,24 @@ interface ShopifyCollection {
 interface ShopifyCartLineItem {
   id: string;
   quantity: number;
+  cost: {
+    totalAmount: ShopifyMoneyV2;
+  };
   merchandise: {
     id: string;
     title: string;
-    priceV2: ShopifyPriceV2;
+  price: ShopifyMoneyV2;
   };
 }
 
 interface ShopifyCart {
   id: string;
   checkoutUrl: string;
-  totalAmount: ShopifyPriceV2;
+  cost: {
+    totalAmount: ShopifyMoneyV2;
+    subtotalAmount: ShopifyMoneyV2;
+    totalTaxAmount: ShopifyMoneyV2 | null;
+  };
   lines: {
     edges: {
       node: ShopifyCartLineItem;
@@ -397,8 +404,8 @@ const VARIANT_FRAGMENT = `
   id
   title
   sku
-  priceV2 { amount currencyCode }
-  compareAtPriceV2 { amount currencyCode }
+  price { amount currencyCode }
+  compareAtPrice { amount currencyCode }
   quantityAvailable
   weight
   weightUnit
@@ -447,9 +454,9 @@ function mapShopifyProduct(sp: ShopifyProduct): Product {
   const variants = sp.variants.edges.map((edge) => ({
     id: edge.node.id,
     title: edge.node.title,
-    price: parseFloat(edge.node.priceV2.amount),
-    compareAtPrice: edge.node.compareAtPriceV2
-      ? parseFloat(edge.node.compareAtPriceV2.amount)
+    price: parseFloat(edge.node.price.amount),
+    compareAtPrice: edge.node.compareAtPrice
+      ? parseFloat(edge.node.compareAtPrice.amount)
       : null,
     sku: edge.node.sku,
     available: edge.node.availableForSale,
@@ -462,9 +469,9 @@ function mapShopifyProduct(sp: ShopifyProduct): Product {
     slug: sp.handle,
     description: sp.description || null,
     content: sp.descriptionHtml || null,
-    price: firstVariant ? parseFloat(firstVariant.priceV2.amount) : 0,
-    comparePrice: firstVariant?.compareAtPriceV2
-      ? parseFloat(firstVariant.compareAtPriceV2.amount)
+    price: firstVariant ? parseFloat(firstVariant.price.amount) : 0,
+    comparePrice: firstVariant?.compareAtPrice
+      ? parseFloat(firstVariant.compareAtPrice.amount)
       : null,
     costPrice: null,
     sku: firstVariant?.sku || null,
@@ -866,17 +873,23 @@ export async function shopifyCreateCart(
         cart {
           id
           checkoutUrl
-          totalAmount { amount currencyCode }
+          cost {
+            totalAmount { amount currencyCode }
+            subtotalAmount { amount currencyCode }
+          }
           lines(first: 50) {
             edges {
               node {
                 id
                 quantity
+                cost {
+                  totalAmount { amount currencyCode }
+                }
                 merchandise {
                   ... on ProductVariant {
                     id
                     title
-                    priceV2 { amount currencyCode }
+                    price { amount currencyCode }
                   }
                 }
               }
@@ -947,17 +960,23 @@ export async function shopifyGetCart(
       cart(id: $id) {
         id
         checkoutUrl
-        totalAmount { amount currencyCode }
+        cost {
+          totalAmount { amount currencyCode }
+          subtotalAmount { amount currencyCode }
+        }
         lines(first: 50) {
           edges {
             node {
               id
               quantity
+              cost {
+                totalAmount { amount currencyCode }
+              }
               merchandise {
                 ... on ProductVariant {
                   id
                   title
-                  priceV2 { amount currencyCode }
+                  price { amount currencyCode }
                 }
               }
             }
@@ -979,13 +998,13 @@ export async function shopifyGetCart(
   return {
     id: cart.id,
     webUrl: cart.checkoutUrl,
-    totalAmount: parseFloat(cart.totalAmount.amount),
-    currency: cart.totalAmount.currencyCode,
+    totalAmount: parseFloat(cart.cost.totalAmount.amount),
+    currency: cart.cost.totalAmount.currencyCode,
     lineItems: cart.lines.edges.map((edge) => ({
       id: edge.node.id,
       title: edge.node.merchandise.title,
       quantity: edge.node.quantity,
-      price: parseFloat(edge.node.merchandise.priceV2.amount),
+      price: parseFloat(edge.node.merchandise.price.amount),
       variantId: edge.node.merchandise.id,
     })),
   };
@@ -1011,13 +1030,13 @@ function mapShopifyCart(cart: ShopifyCart): ShopifyCartResult {
   return {
     id: cart.id,
     webUrl: cart.checkoutUrl,
-    totalAmount: parseFloat(cart.totalAmount.amount),
-    currency: cart.totalAmount.currencyCode,
+    totalAmount: parseFloat(cart.cost.totalAmount.amount),
+    currency: cart.cost.totalAmount.currencyCode,
     lineItems: cart.lines.edges.map((edge) => ({
       id: edge.node.id,
       title: edge.node.merchandise.title,
       quantity: edge.node.quantity,
-      price: parseFloat(edge.node.merchandise.priceV2.amount),
+      price: parseFloat(edge.node.merchandise.price.amount),
       variantId: edge.node.merchandise.id,
     })),
   };
@@ -1029,17 +1048,24 @@ const CART_MUTATION_FRAGMENT = `
   cart {
     id
     checkoutUrl
-    totalAmount { amount currencyCode }
+    cost {
+      totalAmount { amount currencyCode }
+      subtotalAmount { amount currencyCode }
+      totalTaxAmount { amount currencyCode }
+    }
     lines(first: 50) {
       edges {
         node {
           id
           quantity
+          cost {
+            totalAmount { amount currencyCode }
+          }
           merchandise {
             ... on ProductVariant {
               id
               title
-              priceV2 { amount currencyCode }
+              price { amount currencyCode }
             }
           }
         }
