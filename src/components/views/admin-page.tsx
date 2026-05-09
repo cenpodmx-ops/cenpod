@@ -37,21 +37,20 @@ import {
 
 type AdminView = "dashboard" | "products" | "orders";
 
-// Mock revenue data for last 30 days
-const generateMockRevenue = () => {
-  const data = [];
-  const now = new Date();
-  for (let i = 29; i >= 0; i--) {
-    const date = new Date(now);
-    date.setDate(date.getDate() - i);
-    const dayLabel = `${date.getDate()}/${date.getMonth() + 1}`;
-    data.push({
-      date: dayLabel,
-      revenue: Math.floor(Math.random() * 8000) + 500,
-    });
-  }
-  return data;
-};
+interface AdminMetrics {
+  todayRevenue: number;
+  totalRevenue: number;
+  totalOrders: number;
+  pendingOrders: number;
+  totalProducts: number;
+  lowStockProducts: number;
+  totalCustomers: number;
+}
+
+interface RevenueDataPoint {
+  date: string;
+  revenue: number;
+}
 
 function StatusBadge({ status }: { status: string }) {
   const config = ORDER_STATUS_MAP[status] || {
@@ -74,16 +73,24 @@ export default function AdminPage() {
   const [activeView, setActiveView] = useState<AdminView>("dashboard");
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [metrics, setMetrics] = useState<AdminMetrics | null>(null);
+  const [revenueData, setRevenueData] = useState<RevenueDataPoint[]>([]);
   const [loading, setLoading] = useState(true);
-  const [revenueData] = useState(generateMockRevenue);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [productsRes, ordersRes] = await Promise.all([
+      const [metricsRes, productsRes, ordersRes] = await Promise.all([
+        fetch("/api/admin/metrics"),
         fetch("/api/products?limit=100&status=all"),
         fetch("/api/orders?limit=100"),
       ]);
+      if (metricsRes.ok) {
+        const metricsData = await metricsRes.json();
+        setMetrics(metricsData.metrics);
+        setRevenueData(metricsData.revenueChart || []);
+        setOrders(metricsData.recentOrders || []);
+      }
       if (productsRes.ok) {
         const productsData = await productsRes.json();
         setProducts(productsData.products || []);
@@ -103,10 +110,10 @@ export default function AdminPage() {
     fetchData();
   }, [fetchData]);
 
-  const pendingOrders = orders.filter((o) => o.status === "pending").length;
-  const lowStockProducts = products.filter((p) => p.stock < 5).length;
-  const todayRevenue = 0; // placeholder
-  const newCustomers = 0; // placeholder
+  const pendingOrders = metrics?.pendingOrders ?? orders.filter((o) => o.status === "pending").length;
+  const lowStockProducts = metrics?.lowStockProducts ?? products.filter((p) => p.stock < 5).length;
+  const todayRevenue = metrics?.todayRevenue ?? 0;
+  const newCustomers = metrics?.totalCustomers ?? 0;
 
   const lastOrders = orders.slice(0, 5);
 
@@ -158,7 +165,7 @@ export default function AdminPage() {
       bgColor: "bg-red-50",
     },
     {
-      title: "Clientes nuevos",
+      title: "Clientes",
       value: newCustomers.toString(),
       icon: Users,
       color: "text-navy",

@@ -991,6 +991,180 @@ export async function shopifyGetCart(
   };
 }
 
+// ── Shared cart return type & mapper ─────────────────────────────
+
+export interface ShopifyCartResult {
+  id: string;
+  webUrl: string;
+  totalAmount: number;
+  currency: string;
+  lineItems: {
+    id: string;
+    title: string;
+    quantity: number;
+    price: number;
+    variantId: string;
+  }[];
+}
+
+function mapShopifyCart(cart: ShopifyCart): ShopifyCartResult {
+  return {
+    id: cart.id,
+    webUrl: cart.checkoutUrl,
+    totalAmount: parseFloat(cart.totalAmount.amount),
+    currency: cart.totalAmount.currencyCode,
+    lineItems: cart.lines.edges.map((edge) => ({
+      id: edge.node.id,
+      title: edge.node.merchandise.title,
+      quantity: edge.node.quantity,
+      price: parseFloat(edge.node.merchandise.priceV2.amount),
+      variantId: edge.node.merchandise.id,
+    })),
+  };
+}
+
+// ── Shared cart fragment for mutations ──────────────────────────
+
+const CART_MUTATION_FRAGMENT = `
+  cart {
+    id
+    checkoutUrl
+    totalAmount { amount currencyCode }
+    lines(first: 50) {
+      edges {
+        node {
+          id
+          quantity
+          merchandise {
+            ... on ProductVariant {
+              id
+              title
+              priceV2 { amount currencyCode }
+            }
+          }
+        }
+      }
+    }
+  }
+  userErrors { code field message }
+`;
+
+/**
+ * Add items to an existing Shopify cart.
+ */
+export async function shopifyCartLinesAdd(
+  cartId: string,
+  lineItems: { variantId: string; quantity: number }[]
+): Promise<ShopifyCartResult> {
+  const mutation = `
+    mutation CartLinesAdd($cartId: ID!, $lines: [CartLineInput!]!) {
+      cartLinesAdd(cartId: $cartId, lines: $lines) {
+        ${CART_MUTATION_FRAGMENT}
+      }
+    }
+  `;
+
+  const cartLines = lineItems.map((item) => ({
+    merchandiseId: item.variantId,
+    quantity: item.quantity,
+  }));
+
+  const data = await storefrontFetch<{
+    cartLinesAdd: {
+      cart: ShopifyCart | null;
+      userErrors: { code: string; field: string[]; message: string }[];
+    };
+  }>(mutation, { cartId, lines: cartLines });
+
+  if (data.cartLinesAdd.userErrors.length > 0) {
+    const messages = data.cartLinesAdd.userErrors
+      .map((e) => e.message)
+      .join(", ");
+    throw new Error(`Cart lines add errors: ${messages}`);
+  }
+
+  const cart = data.cartLinesAdd.cart;
+  if (!cart) {
+    throw new Error("Failed to add lines to cart: no cart returned");
+  }
+
+  return mapShopifyCart(cart);
+}
+
+/**
+ * Update quantities of existing cart lines.
+ */
+export async function shopifyCartLinesUpdate(
+  cartId: string,
+  lines: { id: string; quantity: number }[]
+): Promise<ShopifyCartResult> {
+  const mutation = `
+    mutation CartLinesUpdate($cartId: ID!, $lines: [CartLineUpdateInput!]!) {
+      cartLinesUpdate(cartId: $cartId, lines: $lines) {
+        ${CART_MUTATION_FRAGMENT}
+      }
+    }
+  `;
+
+  const data = await storefrontFetch<{
+    cartLinesUpdate: {
+      cart: ShopifyCart | null;
+      userErrors: { code: string; field: string[]; message: string }[];
+    };
+  }>(mutation, { cartId, lines });
+
+  if (data.cartLinesUpdate.userErrors.length > 0) {
+    const messages = data.cartLinesUpdate.userErrors
+      .map((e) => e.message)
+      .join(", ");
+    throw new Error(`Cart lines update errors: ${messages}`);
+  }
+
+  const cart = data.cartLinesUpdate.cart;
+  if (!cart) {
+    throw new Error("Failed to update cart lines: no cart returned");
+  }
+
+  return mapShopifyCart(cart);
+}
+
+/**
+ * Remove items from cart by line IDs.
+ */
+export async function shopifyCartLinesRemove(
+  cartId: string,
+  lineIds: string[]
+): Promise<ShopifyCartResult> {
+  const mutation = `
+    mutation CartLinesRemove($cartId: ID!, $lineIds: [ID!]!) {
+      cartLinesRemove(cartId: $cartId, lineIds: $lineIds) {
+        ${CART_MUTATION_FRAGMENT}
+      }
+    }
+  `;
+
+  const data = await storefrontFetch<{
+    cartLinesRemove: {
+      cart: ShopifyCart | null;
+      userErrors: { code: string; field: string[]; message: string }[];
+    };
+  }>(mutation, { cartId, lineIds });
+
+  if (data.cartLinesRemove.userErrors.length > 0) {
+    const messages = data.cartLinesRemove.userErrors
+      .map((e) => e.message)
+      .join(", ");
+    throw new Error(`Cart lines remove errors: ${messages}`);
+  }
+
+  const cart = data.cartLinesRemove.cart;
+  if (!cart) {
+    throw new Error("Failed to remove cart lines: no cart returned");
+  }
+
+  return mapShopifyCart(cart);
+}
+
 /**
  * Get products by collection handle (convenience function).
  */

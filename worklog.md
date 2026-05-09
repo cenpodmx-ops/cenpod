@@ -254,3 +254,73 @@ Stage Summary:
 - Free shipping threshold changed to $1,000 MXN everywhere
 - Top bar banner fixed for mobile (smaller text, better padding)
 - Deployed to Vercel via git push
+
+---
+Task ID: 1
+Agent: Shopify Cart Mutations Agent
+Task: Add Shopify Storefront API cart mutation functions
+
+Work Log:
+- Added shopifyCartLinesAdd function
+- Added shopifyCartLinesUpdate function  
+- Added shopifyCartLinesRemove function
+- Created shared ShopifyCartResult interface and mapShopifyCart helper for DRY return type mapping
+- Created shared CART_MUTATION_FRAGMENT constant for reusable GraphQL cart fragment
+- Exported ShopifyCartResult interface for external use
+- All 3 functions use existing storefrontFetch() helper
+- All 3 functions handle userErrors and throw descriptive errors
+- Lint passes clean
+
+Stage Summary:
+- 3 new Shopify cart mutation functions added to lib/shopify.ts
+- shopifyCartLinesAdd(cartId, lineItems) - adds items to existing cart
+- shopifyCartLinesUpdate(cartId, lines) - updates line quantities
+- shopifyCartLinesRemove(cartId, lineIds) - removes lines from cart
+- Shared ShopifyCartResult type ensures consistent return shape across all cart functions
+
+---
+Task ID: 3
+Agent: Admin Seed API Agent
+Task: Create API endpoint to seed/verify admin user in production DB
+
+Work Log:
+- Created /src/app/api/setup/admin/route.ts
+- POST endpoint: verifies secret matches NEXTAUTH_SECRET, uses db.user.upsert() to create/update admin user (admin@cenpod.mx / cenpod2024, bcryptjs 12 salt rounds, role: "admin"), returns user id/email/name/role (never password)
+- GET endpoint: checks if admin user exists, returns { exists: true/false }, no auth required
+- Follows existing pattern from /src/app/api/auth/register/route.ts
+- Lint passes clean
+- Tested GET endpoint: returns {"exists":true} confirming admin user already in DB
+
+Stage Summary:
+- Admin setup API endpoint created at /api/setup/admin
+- Can be called from production to ensure admin user exists
+- POST requires NEXTAUTH_SECRET for security
+- GET provides a simple existence check without auth
+
+---
+Task ID: 4
+Agent: Main Agent
+Task: Implement 4 critical features: real auth, admin protection, filter orders by user, sync cart with Shopify
+
+Work Log:
+- Analyzed existing codebase: auth is already real (NextAuth.js + bcryptjs), orders already filtered by user, admin guard exists
+- Added 3 Shopify cart mutation functions to lib/shopify.ts (shopifyCartLinesAdd, shopifyCartLinesUpdate, shopifyCartLinesRemove)
+- Created /api/cart/route.ts for Shopify cart operations (create, add, update, remove, sync actions)
+- Rewrote cart store (store/cart.ts) with proper Shopify sync:
+  - Added shopifyCheckoutUrl, isSyncing, lastSyncAt state
+  - Debounced background Shopify sync (1.5s after cart changes)
+  - New getCheckoutUrl() method for efficient checkout
+  - Cart changes no longer invalidate Shopify cart ID, only checkout URL
+- Updated CartDrawer to use new getCheckoutUrl() method instead of manual API calls
+- Created /api/admin/metrics/route.ts with requireAdmin() protection and real DB metrics
+- Updated admin-page.tsx to fetch real metrics from /api/admin/metrics instead of mock data
+- Created /api/setup/admin/route.ts for seeding admin user in production
+- Lint passes clean
+
+Stage Summary:
+- Cart now syncs with Shopify in the background (debounced)
+- Checkout uses existing Shopify cart when available (faster)
+- Admin dashboard shows real metrics (revenue, orders, customers) from DB
+- Admin metrics API is protected with requireAdmin()
+- Admin user can be seeded in production via /api/setup/admin
+- Auth, admin protection, and order filtering were already implemented

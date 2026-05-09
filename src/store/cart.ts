@@ -18,6 +18,9 @@ interface CartState {
   items: CartItem[];
   isOpen: boolean;
   shopifyCartId: string | null;
+  shopifyCheckoutUrl: string | null;
+  isSyncing: boolean;
+  lastSyncAt: number | null;
 }
 
 interface CartActions {
@@ -40,9 +43,24 @@ interface CartActions {
   };
   setShopifyCartId: (id: string | null) => void;
   syncWithShopify: () => Promise<void>;
+  getCheckoutUrl: () => Promise<string>;
 }
 
 const FREE_SHIPPING_THRESHOLD = 1000;
+
+// Debounce timer for Shopify sync
+let syncTimeout: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * Schedule a debounced Shopify cart sync.
+ * Waits 1.5 seconds after the last cart change before syncing.
+ */
+function scheduleShopifySync(syncFn: () => Promise<void>) {
+  if (syncTimeout) clearTimeout(syncTimeout);
+  syncTimeout = setTimeout(() => {
+    syncFn().catch((err) => console.error("Shopify sync error:", err));
+  }, 1500);
+}
 
 export const useCartStore = create<CartState & CartActions>()(
   persist(
@@ -50,6 +68,9 @@ export const useCartStore = create<CartState & CartActions>()(
       items: [],
       isOpen: false,
       shopifyCartId: null,
+      shopifyCheckoutUrl: null,
+      isSyncing: false,
+      lastSyncAt: null,
 
       addItem: (item) => {
         const items = get().items;
@@ -68,22 +89,26 @@ export const useCartStore = create<CartState & CartActions>()(
                 ? { ...i, quantity: newQuantity }
                 : i
             ),
+            // Invalidate Shopify cart checkout URL (cart ID is still valid for updates)
+            shopifyCheckoutUrl: null,
           });
         } else {
           set({
             items: [...items, { ...item, quantity: item.quantity || 1 }],
+            shopifyCheckoutUrl: null,
           });
         }
-        // Invalidate Shopify cart when items change
-        set({ shopifyCartId: null });
         get().openCart();
+        // Schedule background Shopify sync
+        scheduleShopifySync(() => get().syncWithShopify());
       },
 
       removeItem: (id) => {
         set({
           items: get().items.filter((i) => i.id !== id),
-          shopifyCartId: null,
+          shopifyCheckoutUrl: null,
         });
+        scheduleShopifySync(() => get().syncWithShopify());
       },
 
       updateQuantity: (id, quantity) => {
@@ -95,8 +120,9 @@ export const useCartStore = create<CartState & CartActions>()(
           items: get().items.map((i) =>
             i.id === id ? { ...i, quantity: Math.min(quantity, i.maxStock) } : i
           ),
-          shopifyCartId: null,
+          shopifyCheckoutUrl: null,
         });
+        scheduleShopifySync(() => get().syncWithShopify());
       },
 
       incrementQuantity: (id) => {
@@ -113,7 +139,14 @@ export const useCartStore = create<CartState & CartActions>()(
         }
       },
 
-      clearCart: () => set({ items: [], shopifyCartId: null }),
+      clearCart: () => {
+        set({
+          items: [],
+          shopifyCartId: null,
+          shopifyCheckoutUrl: null,
+        });
+        if (syncTimeout) clearTimeout(syncTimeout);
+      },
       openCart: () => set({ isOpen: true }),
       closeCart: () => set({ isOpen: false }),
       toggleCart: () => set((state) => ({ isOpen: !state.isOpen })),
@@ -151,33 +184,111 @@ export const useCartStore = create<CartState & CartActions>()(
             quantity: item.quantity,
           }));
 
-        if (lineItems.length === 0) return;
+        // No items with variant IDs — nothing to sync
+        if (lineItems.length === 0) {
+          set({ shopifyCartId: null, shopifyCheckoutUrl: null, isSyncing: false });
+          return;
+        }
+
+        set({ isSyncing: true });
 
         try {
-          // If we have an existing Shopify cart, verify it's still valid
+          // If we have an existing cart, try to verify it
           if (shopifyCartId) {
-            const res = await fetch(
-              `/api/checkout?cartId=${encodeURIComponent(shopifyCartId)}`
-            );
-            if (res.ok) {
-              // Cart still exists, no need to create a new one
-              return;
+            try {
+              const verifyRes = await fetch(
+                `/api/cart?cartId=${encodeURIComponent(shopifyCartId)}`
+              );
+              if (verifyRes.ok) {
+                const cartData = await verifyRes.json();
+                // Cart exists — update checkout URL
+                set({
+                  shopifyCheckoutUrl: cartData.webUrl,
+                  isSyncing: false,
+                  lastSyncAt: Date.now(),
+                });
+                return;
+              }
+            } catch {
+              // Cart expired or not found, will create new one below
             }
           }
 
-          // Create a new Shopify cart
-          const res = await fetch("/api/checkout", {
+          // Create a new Shopify cart with all items
+          const res = await fetch("/api/cart", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ lineItems }),
+            body: JSON.stringify({ action: "create", lineItems }),
           });
+
           if (res.ok) {
             const data = await res.json();
-            set({ shopifyCartId: data.id });
+            set({
+              shopifyCartId: data.id,
+              shopifyCheckoutUrl: data.webUrl,
+              lastSyncAt: Date.now(),
+            });
           }
         } catch (error) {
           console.error("Shopify cart sync error:", error);
+        } finally {
+          set({ isSyncing: false });
         }
+      },
+
+      getCheckoutUrl: async () => {
+        const { items, shopifyCartId, shopifyCheckoutUrl } = get();
+
+        const lineItems = items
+          .filter((item) => item.variantId)
+          .map((item) => ({
+            variantId: item.variantId!,
+            quantity: item.quantity,
+          }));
+
+        if (lineItems.length === 0) {
+          throw new Error("No hay productos en el carrito con variantes de Shopify");
+        }
+
+        // If we have a valid checkout URL, use it directly
+        if (shopifyCheckoutUrl) {
+          return shopifyCheckoutUrl;
+        }
+
+        // If we have a Shopify cart ID, try to get its checkout URL
+        if (shopifyCartId) {
+          try {
+            const res = await fetch(
+              `/api/cart?cartId=${encodeURIComponent(shopifyCartId)}`
+            );
+            if (res.ok) {
+              const data = await res.json();
+              set({ shopifyCheckoutUrl: data.webUrl });
+              return data.webUrl;
+            }
+          } catch {
+            // Cart expired, create new one below
+          }
+        }
+
+        // No valid Shopify cart — create one with all items
+        const res = await fetch("/api/cart", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "create", lineItems }),
+        });
+
+        if (!res.ok) {
+          throw new Error("Error al crear el carrito de Shopify");
+        }
+
+        const data = await res.json();
+        set({
+          shopifyCartId: data.id,
+          shopifyCheckoutUrl: data.webUrl,
+          lastSyncAt: Date.now(),
+        });
+        return data.webUrl;
       },
     }),
     {
@@ -185,6 +296,7 @@ export const useCartStore = create<CartState & CartActions>()(
       partialize: (state) => ({
         items: state.items,
         shopifyCartId: state.shopifyCartId,
+        shopifyCheckoutUrl: state.shopifyCheckoutUrl,
       }),
     }
   )
