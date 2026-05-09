@@ -73,7 +73,7 @@ export default function AdminPage() {
   const [activeView, setActiveView] = useState<AdminView>("dashboard");
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [metrics, setMetrics] = useState<AdminMetrics | null>(null);
+  const [adminMetrics, setAdminMetrics] = useState<AdminMetrics | null>(null);
   const [revenueData, setRevenueData] = useState<RevenueDataPoint[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -87,7 +87,7 @@ export default function AdminPage() {
       ]);
       if (metricsRes.ok) {
         const metricsData = await metricsRes.json();
-        setMetrics(metricsData.metrics);
+        setAdminMetrics(metricsData.metrics);
         setRevenueData(metricsData.revenueChart || []);
         setOrders(metricsData.recentOrders || []);
       }
@@ -110,10 +110,10 @@ export default function AdminPage() {
     fetchData();
   }, [fetchData]);
 
-  const pendingOrders = metrics?.pendingOrders ?? orders.filter((o) => o.status === "pending").length;
-  const lowStockProducts = metrics?.lowStockProducts ?? products.filter((p) => p.stock < 5).length;
-  const todayRevenue = metrics?.todayRevenue ?? 0;
-  const newCustomers = metrics?.totalCustomers ?? 0;
+  const pendingOrders = adminMetrics?.pendingOrders ?? orders.filter((o) => o.status === "pending").length;
+  const lowStockProducts = adminMetrics?.lowStockProducts ?? products.filter((p) => p.stock < 5).length;
+  const todayRevenue = adminMetrics?.todayRevenue ?? 0;
+  const newCustomers = adminMetrics?.totalCustomers ?? 0;
 
   const lastOrders = orders.slice(0, 5);
 
