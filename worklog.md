@@ -224,3 +224,33 @@ Stage Summary:
 - All messaging focused on general public / family foot care, not just professionals
 - Navigation updated: "Cuidado de Pies" instead of "Profesional"
 - Shopify checkout flow already working (verified code path)
+
+---
+Task ID: 5
+Agent: Main Agent
+Task: Real contact info, fix checkout, $1000 free shipping, deploy to Vercel
+
+Work Log:
+- Updated footer with real business info:
+  - Phone: (662) 216 2630 with tel: link
+  - WhatsApp: (662) 329 4888 with wa.me link
+  - Email: contacto@cenpod.mx with mailto: link
+  - Address: Paseo Nte. 123, Paseo del Sol, 83246 Hermosillo, Son.
+- Updated social media links from placeholder letters to real URLs:
+  - Facebook: https://www.facebook.com/cenpodmx
+  - Instagram: https://www.instagram.com/cenpodmx/
+  - WhatsApp: https://wa.me/526623294888
+- Changed free shipping threshold from $500 to $1,000 across:
+  - Header top bar (fixed mobile visibility with text-[11px] sm:text-xs and px-4)
+  - Cart store (FREE_SHIPPING_THRESHOLD = 1000)
+  - Checkout page (2 occurrences + message text)
+  - Homepage trust bar (2 occurrences)
+- Checkout page Step 3 was already updated to redirect to Shopify (not collecting fake card data)
+- Pushed to GitHub → Vercel auto-deploy triggered
+- Committed and pushed successfully to origin/main
+
+Stage Summary:
+- Real contact info and social links now in footer
+- Free shipping threshold changed to $1,000 MXN everywhere
+- Top bar banner fixed for mobile (smaller text, better padding)
+- Deployed to Vercel via git push
