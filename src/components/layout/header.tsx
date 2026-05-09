@@ -104,8 +104,8 @@ export function Header() {
         }`}
       >
         {/* Top bar - promo with Shopify status */}
-        <div className="bg-navy text-white text-xs py-1.5 flex items-center justify-center gap-2">
-          <p>Envío gratis en compras mayores a $500 MXN · Cuidado de pies para toda la familia</p>
+        <div className="bg-navy text-white text-[11px] sm:text-xs py-1.5 flex items-center justify-center gap-2 px-4">
+          <p className="text-center">Envío gratis en compras mayores a $1,000 MXN</p>
           <span className="hidden sm:inline-flex items-center gap-1 ml-2 px-1.5 py-0.5 rounded-full bg-white/10">
             {shopifyStatus?.connected ? (
               <><Wifi className="h-3 w-3 text-green-400" /><span className="text-green-300">Shopify</span></>

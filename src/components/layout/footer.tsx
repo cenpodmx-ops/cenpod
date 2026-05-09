@@ -87,19 +87,45 @@ export function Footer() {
               Contacto
             </h4>
             <ul className="space-y-2.5 text-sm text-navy-200">
-              <li>📞 +52 (55) 1234-5678</li>
-              <li>📧 contacto@cenpod.mx</li>
-              <li>📍 Ciudad de México, México</li>
+              <li>
+                <a href="tel:+526622162630" className="hover:text-white transition-colors">📞 (662) 216 2630</a>
+              </li>
+              <li>
+                <a href="https://wa.me/526623294888" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">💬 (662) 329 4888</a>
+              </li>
+              <li>
+                <a href="mailto:contacto@cenpod.mx" className="hover:text-white transition-colors">📧 contacto@cenpod.mx</a>
+              </li>
+              <li>📍 Paseo Nte. 123, Paseo del Sol, 83246 Hermosillo, Son.</li>
             </ul>
             <div className="flex gap-3 mt-4">
-              {["Facebook", "Instagram", "WhatsApp"].map((social) => (
-                <span
-                  key={social}
-                  className="w-9 h-9 bg-navy-light rounded-lg flex items-center justify-center text-navy-200 hover:text-white hover:bg-navy-50/20 transition-colors cursor-pointer text-xs"
-                >
-                  {social[0]}
-                </span>
-              ))}
+              <a
+                href="https://www.facebook.com/cenpodmx"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-9 h-9 bg-navy-light rounded-lg flex items-center justify-center text-navy-200 hover:text-white hover:bg-navy-50/20 transition-colors cursor-pointer text-xs"
+                aria-label="Facebook"
+              >
+                F
+              </a>
+              <a
+                href="https://www.instagram.com/cenpodmx/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-9 h-9 bg-navy-light rounded-lg flex items-center justify-center text-navy-200 hover:text-white hover:bg-navy-50/20 transition-colors cursor-pointer text-xs"
+                aria-label="Instagram"
+              >
+                I
+              </a>
+              <a
+                href="https://wa.me/526623294888"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-9 h-9 bg-navy-light rounded-lg flex items-center justify-center text-navy-200 hover:text-white hover:bg-navy-50/20 transition-colors cursor-pointer text-xs"
+                aria-label="WhatsApp"
+              >
+                W
+              </a>
             </div>
           </div>
         </div>

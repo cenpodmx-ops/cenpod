@@ -294,7 +294,7 @@ function OrderSummarySidebar({
 }) {
   const { items, getSubtotal } = useCartStore();
   const subtotal = getSubtotal();
-  const freeShipping = subtotal >= 500;
+  const freeShipping = subtotal >= 1000;
   const finalShippingCost = freeShipping ? 0 : shippingCost;
   const total = subtotal + finalShippingCost;
 
@@ -399,7 +399,7 @@ export default function CheckoutPage() {
   } | null>(null);
 
   const subtotal = getSubtotal();
-  const freeShipping = subtotal >= 500;
+  const freeShipping = subtotal >= 1000;
   const shippingMethod = SHIPPING_METHODS.find((m) => m.id === selectedShipping);
   const shippingCost = freeShipping ? 0 : (shippingMethod?.price ?? 0);
 
@@ -960,7 +960,7 @@ export default function CheckoutPage() {
                       <div className="mb-4 flex items-center gap-2 rounded-xl bg-green-50 px-4 py-3">
                         <span className="text-lg">🎉</span>
                         <span className="text-sm font-medium text-green-700">
-                          ¡Envío gratis en pedidos mayores a $500!
+                          ¡Envío gratis en pedidos mayores a $1,000!
                         </span>
                       </div>
                     )}

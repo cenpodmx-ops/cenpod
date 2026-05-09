@@ -389,7 +389,7 @@ function HeroSection({ navigate }: { navigate: (view: "catalog", params?: Record
           </div>
           <div className="flex items-center gap-1.5">
             <Truck className="w-4 h-4" />
-            <span>Envío gratis +$500</span>
+            <span>Envío gratis +$1,000</span>
           </div>
           <div className="flex items-center gap-1.5">
             <Headset className="w-4 h-4" />
@@ -453,7 +453,7 @@ export default function HomePage() {
             {[
               {
                 icon: <Truck className="w-5 h-5 text-navy" />,
-                label: "Envío gratis +$500",
+                label: "Envío gratis +$1,000",
               },
               {
                 icon: <ShieldCheck className="w-5 h-5 text-navy" />,

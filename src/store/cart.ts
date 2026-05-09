@@ -34,7 +34,7 @@ interface CartActions {
   getShippingProgress: () => { current: number; target: number; remaining: number; freeShipping: boolean };
 }
 
-const FREE_SHIPPING_THRESHOLD = 500;
+const FREE_SHIPPING_THRESHOLD = 1000;
 
 export const useCartStore = create<CartState & CartActions>()(
   persist(
