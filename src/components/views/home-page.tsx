@@ -200,8 +200,8 @@ function ProductCard({ product, index }: { product: Product; index: number }) {
 // ─── Hero Tagline Phrases ──────────────────────────────────────────────────────
 const taglinePhrases = [
   { text: "Cuidado de Pies", icon: Microscope },
-  { text: "Insumos Profesionales", icon: Pill },
-  { text: "Salud y Bienestar", icon: ClipboardCheck },
+  { text: "Bienestar para Tus Pies", icon: Pill },
+  { text: "Salud y Comodidad", icon: ClipboardCheck },
 ];
 
 // ─── Hero Section ──────────────────────────────────────────────────────────────
@@ -220,12 +220,12 @@ function HeroSection({ navigate }: { navigate: (view: "catalog", params?: Record
       {/* Animated gradient background */}
       <div className="absolute inset-0 hero-gradient-animated" />
 
-      {/* Hero background image – subtle overlay */}
+      {/* Hero background image – foot care theme */}
       <div className="absolute inset-0">
         <img
           src="/images/hero-banner.png"
-          alt="Consultorio CENTRO PODOLÓGICO"
-          className="w-full h-full object-cover opacity-15"
+          alt="Cuidado de pies profesional"
+          className="w-full h-full object-cover opacity-20"
         />
       </div>
 
@@ -288,7 +288,7 @@ function HeroSection({ navigate }: { navigate: (view: "catalog", params?: Record
           <img
             src="/images/logo-white.png"
             alt="CENPOD"
-            className="h-24 md:h-[100px] w-auto drop-shadow-lg"
+            className="h-36 md:h-48 w-auto drop-shadow-lg"
           />
         </motion.div>
 
@@ -337,8 +337,8 @@ function HeroSection({ navigate }: { navigate: (view: "catalog", params?: Record
           transition={{ duration: 0.7, delay: 0.5 }}
           className="text-white/60 text-base md:text-lg max-w-xl mx-auto mb-10 leading-relaxed"
         >
-          Todo lo que necesitas para el cuidado de tus pies. Instrumentos, insumos y
-          equipamiento de la más alta calidad profesional.
+          Todo lo que necesitas para el cuidado de tus pies. Productos de calidad
+          para toda la familia y profesionales de la podología.
         </motion.p>
 
         {/* CTA Buttons */}
@@ -360,8 +360,8 @@ function HeroSection({ navigate }: { navigate: (view: "catalog", params?: Record
               navigate("catalog", {
                 catalogFilters: {
                   q: "",
-                  category: [],
-                  usage: ["professional"],
+                  category: ["cuidado-pies"],
+                  usage: [],
                   minPrice: 0,
                   maxPrice: 20000,
                   sort: "featured",
@@ -371,7 +371,7 @@ function HeroSection({ navigate }: { navigate: (view: "catalog", params?: Record
             variant="outline"
             className="group h-13 px-9 border-2 border-navy-200/30 text-white font-semibold text-base rounded-xl bg-white/5 backdrop-blur-sm hover:bg-white/15 hover:border-navy-200/50 hover:scale-[1.03] active:scale-[0.98] transition-all duration-200"
           >
-            Para profesionales
+            Cuidado de pies
             <ArrowRight className="ml-1.5 w-4 h-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300" />
           </Button>
         </motion.div>
@@ -714,10 +714,10 @@ function ProfessionalSection({
   const isInView = useInView(ref, { once: true, margin: "-100px" });
 
   const benefits = [
-    "Productos con la más alta calidad y certificación",
-    "Instrumental para uso profesional y doméstico",
-    "Insumos con normas de calidad internacionales",
-    "Asesoría especializada para el cuidado de tus pies",
+    "Productos de calidad para el cuidado diario de tus pies",
+    "Instrumental profesional y para uso en casa",
+    "Cremas, tratamientos e insumos de primera calidad",
+    "Asesoría especializada para el bienestar de tus pies",
   ];
 
   return (
@@ -731,16 +731,16 @@ function ProfessionalSection({
             transition={{ duration: 0.7 }}
           >
             <Badge className="bg-navy-200/20 text-navy-200 border-0 mb-4 text-xs font-medium px-3 py-1 rounded-full">
-              Uso clínico
+              Para toda la familia
             </Badge>
 
             <h2 className="font-heading text-3xl md:text-4xl text-white font-bold mb-4 leading-tight">
-              Productos profesionales y de uso diario
+              Cuidado profesional para tus pies
             </h2>
 
             <p className="text-navy-200 mb-8 text-sm md:text-base leading-relaxed">
-              Desde productos de uso diario hasta instrumental profesional, tenemos
-              todo para el cuidado de tus pies.
+              Desde cremas y tratamientos para uso diario hasta instrumental profesional, tenemos
+              todo para que tus pies se sientan bien.
             </p>
 
             <ul className="space-y-3 mb-8">
@@ -767,7 +767,7 @@ function ProfessionalSection({
               }
               className="h-11 px-8 bg-white text-navy font-semibold rounded-lg hover:bg-gray-100 transition-colors"
             >
-              Ver productos especializados
+              Ver productos para tus pies
               <ArrowRight className="ml-2 w-4 h-4" />
             </Button>
           </motion.div>

@@ -195,3 +195,32 @@ Stage Summary:
 - All messaging shifted from "professional podiatrists" to "foot care for everyone"
 - Checkout button now creates a real Shopify cart and redirects to Shopify checkout
 - Fallback to local checkout if Shopify is unavailable or items lack variantIds
+
+---
+Task ID: 4
+Agent: Main Agent
+Task: Make logos much bigger, replace clinic banner with foot care image, update messaging for general public
+
+Work Log:
+- Generated new hero-banner.png using AI: foot care products on teal/navy surface (1344x768)
+- Generated new professional-line.png using AI: foot care products display (1344x768)
+- **Header logo**: Increased from h-14 to h-20, removed duplicate text (CENPOD + CENTRO PODOLÓGICO) since logo already contains branding, increased header bar height from h-16 to h-20
+- **Hero banner logo**: Increased from h-24 md:h-[100px] to h-36 md:h-48 (much bigger)
+- **Hero background image**: Replaced clinic image with foot care product photography, increased opacity from 15 to 20
+- **Hero taglines**: Changed "Insumos Profesionales" → "Bienestar para Tus Pies", "Salud y Bienestar" → "Salud y Comodidad"
+- **Hero subtitle**: Changed "Instrumentos, insumos y equipamiento de la más alta calidad profesional" → "Productos de calidad para toda la familia y profesionales de la podología"
+- **Hero CTA button**: Changed "Para profesionales" → "Cuidado de pies", changed filter from usage:professional to category:cuidado-pies
+- **Professional section**: Changed badge "Uso clínico" → "Para toda la familia", heading "Productos profesionales y de uso diario" → "Cuidado profesional para tus pies", description updated to emphasize family care, button "Ver productos especializados" → "Ver productos para tus pies"
+- **Benefits list**: Updated all 4 items to focus on daily foot care for everyone
+- **Nav links**: Changed "Profesional" → "Cuidado de Pies" with category filter
+- **Top bar**: Changed "Productos para el cuidado de tus pies" → "Cuidado de pies para toda la familia"
+- **Footer**: Logo h-10 → h-14, description updated to emphasize family care
+- **Page padding**: Updated pt-[104px] → pt-[112px] for larger header
+- Lint passes clean, dev server running
+
+Stage Summary:
+- Logos are now significantly bigger: header h-20 (was h-14), hero h-36/h-48 (was h-24/h-[100px])
+- Banner background now shows foot care products instead of a clinic
+- All messaging focused on general public / family foot care, not just professionals
+- Navigation updated: "Cuidado de Pies" instead of "Profesional"
+- Shopify checkout flow already working (verified code path)

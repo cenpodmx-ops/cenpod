@@ -27,7 +27,7 @@ export default function Home() {
     <div className="min-h-screen flex flex-col">
       <Header />
       
-      <main className={`flex-1 ${!isCheckout ? "pt-[104px]" : "pt-0"} ${isAdmin ? "" : "pb-safe md:pb-0"}`}>
+      <main className={`flex-1 ${!isCheckout ? "pt-[112px]" : "pt-0"} ${isAdmin ? "" : "pb-safe md:pb-0"}`}>
         {currentView === "home" && <HomePage />}
         {currentView === "catalog" && <CatalogPage />}
         {currentView === "product" && <ProductDetailPage />}

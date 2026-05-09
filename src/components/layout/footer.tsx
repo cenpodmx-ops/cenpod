@@ -16,13 +16,13 @@ export function Footer() {
               <img
                 src="/images/logo-white.png"
                 alt="CENPOD"
-                className="h-10"
+                className="h-14"
               />
               <span className="text-navy-200 text-xs">CENTRO PODOLÓGICO</span>
             </div>
             <p className="text-navy-200 text-sm leading-relaxed">
-              Tu centro de confianza para productos de cuidado de pies. Para profesionales y público en general.
-              Calidad y servicio desde México.
+              Tu centro de confianza para el cuidado de tus pies. Productos de calidad
+              para toda la familia y profesionales de la podología.
             </p>
           </div>
 
