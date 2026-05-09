@@ -16,6 +16,7 @@ import AccountWishlistPage from "@/components/views/account-wishlist-page";
 import AdminPage from "@/components/views/admin-page";
 import AdminProductsPage from "@/components/views/admin-products-page";
 import AdminOrdersPage from "@/components/views/admin-orders-page";
+import { AdminGuard } from "@/components/admin-guard";
 
 export default function Home() {
   const { currentView } = useNavigationStore();
@@ -36,9 +37,9 @@ export default function Home() {
         {currentView === "account-orders" && <AccountOrdersPage />}
         {currentView === "account-order-detail" && <AccountOrderDetailPage />}
         {currentView === "account-wishlist" && <AccountWishlistPage />}
-        {currentView === "admin" && <AdminPage />}
-        {currentView === "admin-products" && <AdminProductsPage />}
-        {currentView === "admin-orders" && <AdminOrdersPage />}
+        {currentView === "admin" && <AdminGuard><AdminPage /></AdminGuard>}
+        {currentView === "admin-products" && <AdminGuard><AdminProductsPage /></AdminGuard>}
+        {currentView === "admin-orders" && <AdminGuard><AdminOrdersPage /></AdminGuard>}
       </main>
 
       {!isCheckout && !isAdmin && <Footer />}

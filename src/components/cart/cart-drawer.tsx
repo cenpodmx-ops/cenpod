@@ -37,6 +37,8 @@ export function CartDrawer() {
   const shippingProgress = getShippingProgress();
 
   const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const shopifyCartId = useCartStore((s) => s.shopifyCartId);
+  const setShopifyCartId = useCartStore((s) => s.setShopifyCartId);
 
   const handleCheckout = async () => {
     // Build line items from cart
@@ -56,6 +58,26 @@ export function CartDrawer() {
 
     try {
       setIsCheckingOut(true);
+
+      // If we have an existing Shopify cart, try to get its checkout URL
+      if (shopifyCartId) {
+        try {
+          const cartRes = await fetch(
+            `/api/checkout?cartId=${encodeURIComponent(shopifyCartId)}`
+          );
+          if (cartRes.ok) {
+            const cartData = await cartRes.json();
+            if (cartData.webUrl) {
+              window.location.href = cartData.webUrl;
+              return;
+            }
+          }
+        } catch {
+          // Cart expired or invalid, create a new one
+        }
+      }
+
+      // Create a new Shopify cart
       const response = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -65,6 +87,7 @@ export function CartDrawer() {
       if (!response.ok) throw new Error("Error creating checkout");
 
       const checkout = await response.json();
+      setShopifyCartId(checkout.id);
       // Redirect to Shopify checkout
       window.location.href = checkout.webUrl;
     } catch (error) {

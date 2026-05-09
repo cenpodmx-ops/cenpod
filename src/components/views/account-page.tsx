@@ -15,17 +15,18 @@ import {
   Eye,
   EyeOff,
   UserPlus,
+  Loader2,
 } from "lucide-react";
 import { useNavigationStore } from "@/store/navigation";
 import { useWishlistStore } from "@/store/wishlist";
 import { useCartStore } from "@/store/cart";
-import { formatPrice, ORDER_STATUS_MAP, Order, parseImages } from "@/types";
+import { useAuthStore } from "@/store/auth";
+import { formatPrice, ORDER_STATUS_MAP, Order } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 
 /* ════════════════════════ Status Badge ════════════════════════ */
 
@@ -47,7 +48,8 @@ function StatusBadge({ status }: { status: string }) {
 
 /* ════════════════════════ Login / Register Form ════════════════════════ */
 
-function AuthForm({ onLogin }: { onLogin: (name: string, email: string) => void }) {
+function AuthForm() {
+  const { login, register } = useAuthStore();
   const [authTab, setAuthTab] = useState("login");
   const [showPassword, setShowPassword] = useState(false);
   const [loginEmail, setLoginEmail] = useState("");
@@ -57,16 +59,23 @@ function AuthForm({ onLogin }: { onLogin: (name: string, email: string) => void 
   const [registerPassword, setRegisterPassword] = useState("");
   const [registerConfirm, setRegisterConfirm] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!loginEmail || !loginPassword) {
       setError("Por favor completa todos los campos");
       return;
     }
-    onLogin(loginEmail.split("@")[0], loginEmail);
+    setLoading(true);
+    setError("");
+    const result = await login(loginEmail, loginPassword);
+    if (!result.ok) {
+      setError(result.error || "Error al iniciar sesión");
+    }
+    setLoading(false);
   };
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     if (!registerName || !registerEmail || !registerPassword || !registerConfirm) {
       setError("Por favor completa todos los campos");
       return;
@@ -79,7 +88,13 @@ function AuthForm({ onLogin }: { onLogin: (name: string, email: string) => void 
       setError("La contraseña debe tener al menos 6 caracteres");
       return;
     }
-    onLogin(registerName, registerEmail);
+    setLoading(true);
+    setError("");
+    const result = await register(registerName, registerEmail, registerPassword);
+    if (!result.ok) {
+      setError(result.error || "Error al registrarse");
+    }
+    setLoading(false);
   };
 
   return (
@@ -103,7 +118,7 @@ function AuthForm({ onLogin }: { onLogin: (name: string, email: string) => void 
         </div>
 
         <div className="rounded-2xl bg-white p-6 shadow-sm">
-          <Tabs value={authTab} onValueChange={setAuthTab}>
+          <Tabs value={authTab} onValueChange={(v) => { setAuthTab(v); setError(""); }}>
             <TabsList className="mb-6 w-full bg-gray-bg">
               <TabsTrigger value="login" className="flex-1">
                 Iniciar sesión
@@ -132,10 +147,7 @@ function AuthForm({ onLogin }: { onLogin: (name: string, email: string) => void 
                       type="email"
                       placeholder="correo@ejemplo.com"
                       value={loginEmail}
-                      onChange={(e) => {
-                        setLoginEmail(e.target.value);
-                        setError("");
-                      }}
+                      onChange={(e) => setLoginEmail(e.target.value)}
                       className="h-11 rounded-lg border-gray-200 pl-10 focus:border-navy focus:ring-navy/20"
                     />
                   </div>
@@ -152,10 +164,7 @@ function AuthForm({ onLogin }: { onLogin: (name: string, email: string) => void 
                       type={showPassword ? "text" : "password"}
                       placeholder="••••••••"
                       value={loginPassword}
-                      onChange={(e) => {
-                        setLoginPassword(e.target.value);
-                        setError("");
-                      }}
+                      onChange={(e) => setLoginPassword(e.target.value)}
                       className="h-11 rounded-lg border-gray-200 pl-10 pr-10 focus:border-navy focus:ring-navy/20"
                     />
                     <button
@@ -178,8 +187,12 @@ function AuthForm({ onLogin }: { onLogin: (name: string, email: string) => void 
 
                 <Button
                   type="submit"
-                  className="h-12 w-full rounded-xl bg-navy text-white hover:bg-navy-light"
+                  disabled={loading}
+                  className="h-12 w-full rounded-xl bg-navy text-white hover:bg-navy-light disabled:opacity-60"
                 >
+                  {loading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : null}
                   Iniciar sesión
                 </Button>
               </form>
@@ -204,10 +217,7 @@ function AuthForm({ onLogin }: { onLogin: (name: string, email: string) => void 
                       type="text"
                       placeholder="Juan Pérez"
                       value={registerName}
-                      onChange={(e) => {
-                        setRegisterName(e.target.value);
-                        setError("");
-                      }}
+                      onChange={(e) => setRegisterName(e.target.value)}
                       className="h-11 rounded-lg border-gray-200 pl-10 focus:border-navy focus:ring-navy/20"
                     />
                   </div>
@@ -224,10 +234,7 @@ function AuthForm({ onLogin }: { onLogin: (name: string, email: string) => void 
                       type="email"
                       placeholder="correo@ejemplo.com"
                       value={registerEmail}
-                      onChange={(e) => {
-                        setRegisterEmail(e.target.value);
-                        setError("");
-                      }}
+                      onChange={(e) => setRegisterEmail(e.target.value)}
                       className="h-11 rounded-lg border-gray-200 pl-10 focus:border-navy focus:ring-navy/20"
                     />
                   </div>
@@ -244,10 +251,7 @@ function AuthForm({ onLogin }: { onLogin: (name: string, email: string) => void 
                       type={showPassword ? "text" : "password"}
                       placeholder="Mínimo 6 caracteres"
                       value={registerPassword}
-                      onChange={(e) => {
-                        setRegisterPassword(e.target.value);
-                        setError("");
-                      }}
+                      onChange={(e) => setRegisterPassword(e.target.value)}
                       className="h-11 rounded-lg border-gray-200 pl-10 pr-10 focus:border-navy focus:ring-navy/20"
                     />
                     <button
@@ -275,10 +279,7 @@ function AuthForm({ onLogin }: { onLogin: (name: string, email: string) => void 
                       type={showPassword ? "text" : "password"}
                       placeholder="Repite tu contraseña"
                       value={registerConfirm}
-                      onChange={(e) => {
-                        setRegisterConfirm(e.target.value);
-                        setError("");
-                      }}
+                      onChange={(e) => setRegisterConfirm(e.target.value)}
                       className="h-11 rounded-lg border-gray-200 pl-10 focus:border-navy focus:ring-navy/20"
                     />
                   </div>
@@ -290,9 +291,14 @@ function AuthForm({ onLogin }: { onLogin: (name: string, email: string) => void 
 
                 <Button
                   type="submit"
-                  className="h-12 w-full rounded-xl bg-navy text-white hover:bg-navy-light"
+                  disabled={loading}
+                  className="h-12 w-full rounded-xl bg-navy text-white hover:bg-navy-light disabled:opacity-60"
                 >
-                  <UserPlus className="mr-2 h-4 w-4" />
+                  {loading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <UserPlus className="mr-2 h-4 w-4" />
+                  )}
                   Crear cuenta
                 </Button>
               </form>
@@ -306,18 +312,14 @@ function AuthForm({ onLogin }: { onLogin: (name: string, email: string) => void 
 
 /* ════════════════════════ Dashboard ════════════════════════ */
 
-function Dashboard({
-  userName,
-  onLogout,
-}: {
-  userName: string;
-  onLogout: () => void;
-}) {
+function Dashboard() {
+  const { user, logout } = useAuthStore();
   const { navigate } = useNavigationStore();
   const { items: wishlistItems } = useWishlistStore();
-  const { addItem } = useCartStore();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const userName = user?.name || user?.email?.split("@")[0] || "Usuario";
 
   useEffect(() => {
     async function fetchOrders() {
@@ -369,6 +371,11 @@ function Dashboard({
     },
   ];
 
+  const handleLogout = async () => {
+    await logout();
+    navigate("home");
+  };
+
   const quickActions = [
     {
       icon: Package,
@@ -394,7 +401,7 @@ function Dashboard({
     {
       icon: LogOut,
       label: "Cerrar sesión",
-      onClick: onLogout,
+      onClick: handleLogout,
       color: "text-gray-600",
       bg: "bg-gray-100",
     },
@@ -416,7 +423,7 @@ function Dashboard({
             <h1 className="font-heading text-2xl font-bold text-navy">
               Hola, {userName}
             </h1>
-            <p className="text-sm text-gray-500">Bienvenido a tu cuenta</p>
+            <p className="text-sm text-gray-500">{user?.email}</p>
           </div>
         </motion.div>
 
@@ -560,25 +567,19 @@ function Dashboard({
 /* ════════════════════════ MAIN COMPONENT ════════════════════════ */
 
 export default function AccountPage() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userName, setUserName] = useState("");
-  const [userEmail, setUserEmail] = useState("");
+  const { user, isAuthenticated, isLoading } = useAuthStore();
 
-  const handleLogin = (name: string, email: string) => {
-    setUserName(name);
-    setUserEmail(email);
-    setIsLoggedIn(true);
-  };
-
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    setUserName("");
-    setUserEmail("");
-  };
-
-  if (!isLoggedIn) {
-    return <AuthForm onLogin={handleLogin} />;
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-bg">
+        <div className="animate-spin h-8 w-8 border-2 border-navy border-t-transparent rounded-full" />
+      </div>
+    );
   }
 
-  return <Dashboard userName={userName} onLogout={handleLogout} />;
+  if (!isAuthenticated || !user) {
+    return <AuthForm />;
+  }
+
+  return <Dashboard />;
 }

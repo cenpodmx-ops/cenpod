@@ -17,6 +17,7 @@ export interface CartItem {
 interface CartState {
   items: CartItem[];
   isOpen: boolean;
+  shopifyCartId: string | null;
 }
 
 interface CartActions {
@@ -31,7 +32,14 @@ interface CartActions {
   toggleCart: () => void;
   getSubtotal: () => number;
   getItemCount: () => number;
-  getShippingProgress: () => { current: number; target: number; remaining: number; freeShipping: boolean };
+  getShippingProgress: () => {
+    current: number;
+    target: number;
+    remaining: number;
+    freeShipping: boolean;
+  };
+  setShopifyCartId: (id: string | null) => void;
+  syncWithShopify: () => Promise<void>;
 }
 
 const FREE_SHIPPING_THRESHOLD = 1000;
@@ -41,6 +49,7 @@ export const useCartStore = create<CartState & CartActions>()(
     (set, get) => ({
       items: [],
       isOpen: false,
+      shopifyCartId: null,
 
       addItem: (item) => {
         const items = get().items;
@@ -62,17 +71,19 @@ export const useCartStore = create<CartState & CartActions>()(
           });
         } else {
           set({
-            items: [
-              ...items,
-              { ...item, quantity: item.quantity || 1 },
-            ],
+            items: [...items, { ...item, quantity: item.quantity || 1 }],
           });
         }
+        // Invalidate Shopify cart when items change
+        set({ shopifyCartId: null });
         get().openCart();
       },
 
       removeItem: (id) => {
-        set({ items: get().items.filter((i) => i.id !== id) });
+        set({
+          items: get().items.filter((i) => i.id !== id),
+          shopifyCartId: null,
+        });
       },
 
       updateQuantity: (id, quantity) => {
@@ -84,6 +95,7 @@ export const useCartStore = create<CartState & CartActions>()(
           items: get().items.map((i) =>
             i.id === id ? { ...i, quantity: Math.min(quantity, i.maxStock) } : i
           ),
+          shopifyCartId: null,
         });
       },
 
@@ -101,7 +113,7 @@ export const useCartStore = create<CartState & CartActions>()(
         }
       },
 
-      clearCart: () => set({ items: [] }),
+      clearCart: () => set({ items: [], shopifyCartId: null }),
       openCart: () => set({ isOpen: true }),
       closeCart: () => set({ isOpen: false }),
       toggleCart: () => set((state) => ({ isOpen: !state.isOpen })),
@@ -126,10 +138,54 @@ export const useCartStore = create<CartState & CartActions>()(
           freeShipping: subtotal >= FREE_SHIPPING_THRESHOLD,
         };
       },
+
+      setShopifyCartId: (id) => set({ shopifyCartId: id }),
+
+      syncWithShopify: async () => {
+        const { items, shopifyCartId } = get();
+
+        const lineItems = items
+          .filter((item) => item.variantId)
+          .map((item) => ({
+            variantId: item.variantId!,
+            quantity: item.quantity,
+          }));
+
+        if (lineItems.length === 0) return;
+
+        try {
+          // If we have an existing Shopify cart, verify it's still valid
+          if (shopifyCartId) {
+            const res = await fetch(
+              `/api/checkout?cartId=${encodeURIComponent(shopifyCartId)}`
+            );
+            if (res.ok) {
+              // Cart still exists, no need to create a new one
+              return;
+            }
+          }
+
+          // Create a new Shopify cart
+          const res = await fetch("/api/checkout", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ lineItems }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            set({ shopifyCartId: data.id });
+          }
+        } catch (error) {
+          console.error("Shopify cart sync error:", error);
+        }
+      },
     }),
     {
       name: "cenpod-cart",
-      partialize: (state) => ({ items: state.items }),
+      partialize: (state) => ({
+        items: state.items,
+        shopifyCartId: state.shopifyCartId,
+      }),
     }
   )
 );

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { shopifyGetProducts } from "@/lib/shopify";
 import { db } from "@/lib/db";
 import { getDemoProducts } from "@/lib/demo-data";
+import { requireAdmin } from "@/lib/auth";
 
 export async function GET(request: Request) {
   try {
@@ -87,6 +88,11 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const admin = await requireAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: "No autorizado — se requiere rol de administrador" }, { status: 403 });
+    }
+
     const body = await request.json();
     const product = await db.product.create({
       data: {

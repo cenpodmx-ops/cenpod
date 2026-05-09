@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import bcrypt from "bcryptjs";
 
 async function seed() {
   // Seed categories
@@ -341,13 +342,15 @@ async function seed() {
     });
   }
 
-  // Create admin user
+  // Create admin user with hashed password
+  const adminPassword = await bcrypt.hash("cenpod2024", 12);
   await db.user.upsert({
     where: { email: "admin@cenpod.mx" },
     update: {},
     create: {
       email: "admin@cenpod.mx",
       name: "Admin CENPOD",
+      password: adminPassword,
       role: "admin",
     },
   });

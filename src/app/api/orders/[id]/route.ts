@@ -1,11 +1,17 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getCurrentUser, requireAdmin } from "@/lib/auth";
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
     const { id } = await params;
     const order = await db.order.findUnique({
       where: { id },
@@ -14,6 +20,11 @@ export async function GET(
 
     if (!order) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    }
+
+    // Customer can only see their own orders
+    if (user.role !== "admin" && order.userId !== user.id) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
 
     return NextResponse.json(order);
@@ -28,6 +39,12 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Only admins can update orders
+    const admin = await requireAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: "No autorizado — se requiere rol de administrador" }, { status: 403 });
+    }
+
     const { id } = await params;
     const body = await request.json();
 

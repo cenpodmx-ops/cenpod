@@ -3,6 +3,7 @@
 import { useNavigationStore } from "@/store/navigation";
 import { useCartStore } from "@/store/cart";
 import { useWishlistStore } from "@/store/wishlist";
+import { useAuthStore } from "@/store/auth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -33,6 +34,7 @@ export function Header() {
   const { navigate, currentView } = useNavigationStore();
   const { getItemCount, openCart } = useCartStore();
   const { items: wishlistItems } = useWishlistStore();
+  const { user, isAuthenticated } = useAuthStore();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -217,15 +219,29 @@ export function Header() {
               </Button>
 
               {/* Account */}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => navigate("account")}
-                className="text-muted-foreground hover:text-navy hidden sm:flex"
-                aria-label="Mi cuenta"
-              >
-                <User className="h-5 w-5" />
-              </Button>
+              {isAuthenticated && user ? (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => navigate(user.role === "admin" ? "admin" : "account")}
+                  className="relative hidden sm:flex"
+                  aria-label="Mi cuenta"
+                >
+                  <div className="h-7 w-7 rounded-full bg-navy text-white flex items-center justify-center text-xs font-bold">
+                    {(user.name || user.email).charAt(0).toUpperCase()}
+                  </div>
+                </Button>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => navigate("account")}
+                  className="text-muted-foreground hover:text-navy hidden sm:flex"
+                  aria-label="Mi cuenta"
+                >
+                  <User className="h-5 w-5" />
+                </Button>
+              )}
 
               {/* Mobile menu */}
               <Button
@@ -338,12 +354,12 @@ export function Header() {
               <hr className="my-2 border-border" />
               <button
                 onClick={() => {
-                  navigate("account");
+                  navigate(isAuthenticated && user?.role === "admin" ? "admin" : "account");
                   setMobileMenuOpen(false);
                 }}
                 className="text-left px-4 py-3 rounded-lg hover:bg-gray-bg dark:hover:bg-[#1e1e1e] text-sm font-medium transition-colors"
               >
-                Mi Cuenta
+                {isAuthenticated ? `Mi Cuenta (${user?.name || user?.email?.split("@")[0]})` : "Mi Cuenta"}
               </button>
               <button
                 onClick={() => {

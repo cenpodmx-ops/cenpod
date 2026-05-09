@@ -1,9 +1,15 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { v4 as uuidv4 } from "uuid";
+import { getCurrentUser } from "@/lib/auth";
 
 export async function GET(request: Request) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status") || "";
     const page = parseInt(searchParams.get("page") || "1");
@@ -12,6 +18,11 @@ export async function GET(request: Request) {
     const where: Record<string, unknown> = {};
     if (status) {
       where.status = status;
+    }
+
+    // If not admin, filter by userId
+    if (user.role !== "admin") {
+      where.userId = user.id;
     }
 
     const [orders, total] = await Promise.all([
@@ -34,13 +45,16 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const user = await getCurrentUser();
+    // Allow guest checkout (no auth required for creating orders)
     const body = await request.json();
     const orderNumber = `CEN-${Date.now().toString(36).toUpperCase()}-${uuidv4().slice(0, 4).toUpperCase()}`;
 
     const order = await db.order.create({
       data: {
         orderNumber,
-        userId: body.userId || null,
+        // Use authenticated userId from session, not from body (security)
+        userId: user?.id || null,
         subtotal: body.subtotal,
         shipping: body.shipping || 0,
         discount: body.discount || 0,
@@ -49,6 +63,7 @@ export async function POST(request: Request) {
         shippingAddress: body.shippingAddress ? JSON.stringify(body.shippingAddress) : null,
         billingAddress: body.billingAddress ? JSON.stringify(body.billingAddress) : null,
         paymentMethod: body.paymentMethod || null,
+        paymentId: body.paymentId || null,
         notes: body.notes || null,
         timeline: JSON.stringify([
           { status: "pending", date: new Date().toISOString(), note: "Pedido creado" },

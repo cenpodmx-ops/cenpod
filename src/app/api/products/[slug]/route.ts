@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { shopifyGetProductByHandle } from "@/lib/shopify";
 import { db } from "@/lib/db";
 import { getDemoProductBySlug } from "@/lib/demo-data";
+import { requireAdmin } from "@/lib/auth";
 
 export async function GET(
   request: Request,
@@ -62,6 +63,11 @@ export async function PUT(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
+    const admin = await requireAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: "No autorizado — se requiere rol de administrador" }, { status: 403 });
+    }
+
     const { slug } = await params;
     const body = await request.json();
 
@@ -85,6 +91,11 @@ export async function DELETE(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
+    const admin = await requireAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: "No autorizado — se requiere rol de administrador" }, { status: 403 });
+    }
+
     const { slug } = await params;
     await db.product.delete({ where: { slug } });
     return NextResponse.json({ success: true });
