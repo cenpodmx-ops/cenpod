@@ -494,119 +494,15 @@ export default function CheckoutPage() {
     setIsSubmitting(true);
     setCheckoutError(null);
     try {
-      // Refresh variant IDs before checkout to ensure they're current
-      const { refreshVariantIds } = useCartStore.getState();
-      await refreshVariantIds();
-
-      // Re-read items from store after refresh
+      // Re-read items from store
       const freshItems = useCartStore.getState().items;
 
-      // Build Shopify line items from cart
-      const lineItems = freshItems
-        .filter((item) => item.variantId) // Only items with Shopify variant IDs
-        .map((item) => ({
-          variantId: item.variantId!,
-          quantity: item.quantity,
-        }));
-
-      if (lineItems.length === 0) {
-        // Fallback: create local order if no Shopify variant IDs
-        const finalShippingCost = freeShipping ? 0 : (shippingMethod?.price ?? 0);
-        const total = subtotal + finalShippingCost;
-        const shippingData = shippingForm.getValues();
-
-        const response = await fetch("/api/orders", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            subtotal,
-            shipping: finalShippingCost,
-            discount: 0,
-            total,
-            shippingMethod: shippingMethod?.name || selectedShipping,
-            shippingAddress: {
-              fullName: shippingData.fullName,
-              email: shippingData.email,
-              phone: shippingData.phone,
-              street: shippingData.street,
-              neighborhood: shippingData.neighborhood,
-              postalCode: shippingData.postalCode,
-              city: shippingData.city,
-              state: shippingData.state,
-            },
-            paymentMethod: "local",
-            items: freshItems.map((item) => ({
-              name: item.name,
-              price: item.price,
-              quantity: item.quantity,
-              image: item.image,
-              productId: item.id,
-              variant: item.variant || null,
-            })),
-          }),
-        });
-
-        if (!response.ok) {
-          const errData = await response.json().catch(() => ({}));
-          throw new Error(errData.error || "Error al crear el pedido");
-        }
-        const order = await response.json();
-
-        setOrderData({
-          orderNumber: order.orderNumber,
-          total,
-          shippingMethod: shippingMethod?.name || selectedShipping,
-          estimatedDelivery: shippingMethod?.days || "3-5 días hábiles",
-        });
-        setOrderConfirmed(true);
-        return;
-      }
-
-      // Create Shopify checkout
-      let checkoutResponse = await fetch("/api/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lineItems }),
-      });
-
-      if (!checkoutResponse.ok) {
-        // Variant IDs might be stale — refresh and retry
-        const updated = await refreshVariantIds();
-        if (updated > 0) {
-          const retryItems = useCartStore.getState().items
-            .filter((item) => item.variantId)
-            .map((item) => ({
-              variantId: item.variantId!,
-              quantity: item.quantity,
-            }));
-
-          if (retryItems.length > 0) {
-            checkoutResponse = await fetch("/api/checkout", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ lineItems: retryItems }),
-            });
-          }
-        }
-
-        if (!checkoutResponse.ok) {
-          const errData = await checkoutResponse.json().catch(() => ({}));
-          throw new Error(errData.error || "Error al crear el checkout de Shopify. Intenta vaciar el carrito y agregar los productos de nuevo.");
-        }
-      }
-
-      const checkout = await checkoutResponse.json();
-
-      if (!checkout.webUrl) {
-        throw new Error("No se recibió la URL de checkout de Shopify");
-      }
-
-      // Also create a local order for tracking
+      // Always create local order (Shopify redirect disabled while store is in coming-soon mode)
       const finalShippingCost = freeShipping ? 0 : (shippingMethod?.price ?? 0);
       const total = subtotal + finalShippingCost;
       const shippingData = shippingForm.getValues();
 
-      await fetch("/api/orders", {
+      const response = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -625,8 +521,7 @@ export default function CheckoutPage() {
             city: shippingData.city,
             state: shippingData.state,
           },
-          paymentMethod: "shopify",
-          paymentId: checkout.id,
+          paymentMethod: "local",
           items: freshItems.map((item) => ({
             name: item.name,
             price: item.price,
@@ -638,8 +533,21 @@ export default function CheckoutPage() {
         }),
       });
 
-      // Redirect to Shopify checkout
-      window.location.href = checkout.webUrl;
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || "Error al crear el pedido");
+      }
+      const order = await response.json();
+
+      setOrderData({
+        orderNumber: order.orderNumber,
+        total,
+        shippingMethod: shippingMethod?.name || selectedShipping,
+        estimatedDelivery: shippingMethod?.days || "3-5 días hábiles",
+      });
+      setOrderConfirmed(true);
+      // Clear cart after successful order
+      clearCart();
     } catch (error) {
       console.error("Order error:", error);
       setCheckoutError(

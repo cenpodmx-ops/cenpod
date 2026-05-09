@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Minus, Plus, ShoppingBag, Trash2, AlertTriangle } from "lucide-react";
+import { X, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { useCartStore } from "@/store/cart";
 import { useNavigationStore } from "@/store/navigation";
 import { formatPrice } from "@/types";
@@ -27,7 +26,6 @@ export function CartDrawer() {
     getSubtotal,
     getItemCount,
     getShippingProgress,
-    clearCart,
   } = useCartStore();
 
   const { navigate } = useNavigationStore();
@@ -36,49 +34,10 @@ export function CartDrawer() {
   const itemCount = getItemCount();
   const shippingProgress = getShippingProgress();
 
-  const [isCheckingOut, setIsCheckingOut] = useState(false);
-  const [cartError, setCartError] = useState<string | null>(null);
-  const getCheckoutUrl = useCartStore((s) => s.getCheckoutUrl);
-
-  const handleCheckout = async () => {
-    setCartError(null);
-    // Check if we have items with Shopify variant IDs
-    const hasShopifyItems = items.some((item) => item.variantId);
-
-    if (!hasShopifyItems) {
-      // No Shopify variant IDs, go to local checkout as fallback
-      closeCart();
-      navigate("checkout");
-      return;
-    }
-
-    try {
-      setIsCheckingOut(true);
-
-      // Use the cart store's getCheckoutUrl which handles cart sync
-      const checkoutUrl = await getCheckoutUrl();
-
-      if (checkoutUrl) {
-        window.location.href = checkoutUrl;
-      } else {
-        // Fallback to local checkout
-        closeCart();
-        navigate("checkout");
-      }
-    } catch (error) {
-      console.error("Checkout error:", error);
-      const errorMsg = error instanceof Error ? error.message : "Error al procesar";
-      // Check if it's a variant ID error and provide a helpful message
-      if (errorMsg.includes("no existe") || errorMsg.includes("Cart creation errors")) {
-        setCartError(
-          "Los productos en tu carrito necesitan actualizarse. Intenta vaciar el carrito y agregar los productos de nuevo, o contacta soporte."
-        );
-      } else {
-        setCartError(errorMsg);
-      }
-    } finally {
-      setIsCheckingOut(false);
-    }
+  const handleCheckout = () => {
+    // Use local checkout page (Shopify redirect disabled while store is in coming-soon/password mode)
+    closeCart();
+    navigate("checkout");
   };
 
   const handleExploreProducts = () => {
@@ -281,38 +240,12 @@ export function CartDrawer() {
                     </span>
                   </div>
 
-                  {/* Error message */}
-                  {cartError && (
-                    <div className="mb-3 rounded-lg bg-red-50 border border-red-200 p-3 flex items-start gap-2">
-                      <AlertTriangle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
-                      <div className="flex-1">
-                        <p className="text-xs text-red-700">{cartError}</p>
-                        {(cartError.includes("actualizarse") || cartError.includes("no existe")) && (
-                          <button
-                            onClick={() => { clearCart(); setCartError(null); }}
-                            className="mt-1.5 text-xs font-medium text-red-700 underline hover:text-red-900 transition-colors"
-                          >
-                            Vaciar carrito y empezar de nuevo
-                          </button>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => setCartError(null)}
-                        className="p-0.5 rounded hover:bg-red-100 transition-colors"
-                        aria-label="Cerrar error"
-                      >
-                        <X className="h-3 w-3 text-red-400" />
-                      </button>
-                    </div>
-                  )}
-
                   {/* Checkout Button */}
                   <button
                     onClick={handleCheckout}
-                    disabled={isCheckingOut}
-                    className="w-full h-12 bg-navy hover:bg-navy-light text-white font-semibold text-sm rounded-xl transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="w-full h-12 bg-navy hover:bg-navy-light text-white font-semibold text-sm rounded-xl transition-colors"
                   >
-                    {isCheckingOut ? "Procesando..." : "Ir al checkout"}
+                    Ir al checkout
                   </button>
 
                   {/* Continue Shopping */}
