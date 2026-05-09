@@ -220,11 +220,11 @@ function HeroSection({ navigate }: { navigate: (view: "catalog", params?: Record
       {/* Animated gradient background */}
       <div className="absolute inset-0 hero-gradient-animated" />
 
-      {/* Hero background image – foot care theme */}
+      {/* Hero background image – healthy feet theme */}
       <div className="absolute inset-0">
         <img
           src="/images/hero-banner.png"
-          alt="Cuidado de pies profesional"
+          alt="Cuidado y bienestar de tus pies"
           className="w-full h-full object-cover opacity-20"
         />
       </div>
@@ -288,7 +288,7 @@ function HeroSection({ navigate }: { navigate: (view: "catalog", params?: Record
           <img
             src="/images/logo-white.png"
             alt="CENPOD"
-            className="h-36 md:h-48 w-auto drop-shadow-lg"
+            className="h-44 md:h-64 w-auto drop-shadow-lg"
           />
         </motion.div>
 
@@ -350,10 +350,10 @@ function HeroSection({ navigate }: { navigate: (view: "catalog", params?: Record
         >
           <Button
             onClick={() => navigate("catalog")}
-            className="group h-13 px-9 bg-white text-navy font-semibold text-base rounded-xl hover:bg-white/95 hover:scale-[1.03] active:scale-[0.98] transition-all duration-200 hero-cta-glow shadow-lg shadow-white/10"
+            className="group h-14 px-10 bg-white text-navy font-semibold text-base rounded-xl hover:bg-white/95 hover:scale-[1.03] active:scale-[0.98] transition-all duration-200 hero-cta-glow shadow-lg shadow-white/10 flex items-center justify-center gap-2"
           >
             Ver productos
-            <ChevronRight className="ml-1.5 w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
+            <ChevronRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
           </Button>
           <Button
             onClick={() =>
@@ -369,10 +369,10 @@ function HeroSection({ navigate }: { navigate: (view: "catalog", params?: Record
               })
             }
             variant="outline"
-            className="group h-13 px-9 border-2 border-navy-200/30 text-white font-semibold text-base rounded-xl bg-white/5 backdrop-blur-sm hover:bg-white/15 hover:border-navy-200/50 hover:scale-[1.03] active:scale-[0.98] transition-all duration-200"
+            className="group h-14 px-10 border-2 border-navy-200/30 text-white font-semibold text-base rounded-xl bg-white/5 backdrop-blur-sm hover:bg-white/15 hover:border-navy-200/50 hover:scale-[1.03] active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2"
           >
             Cuidado de pies
-            <ArrowRight className="ml-1.5 w-4 h-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300" />
+            <ArrowRight className="w-4 h-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300" />
           </Button>
         </motion.div>
 
